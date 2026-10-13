@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import type { ProductWithDetails, ProductVariant } from "@/db/schema";
 import { useCartStore } from "@/store/cartStore";
 import { SAMPLE_SWATCH_PRICE_CENTS, SAMPLE_SWATCH_SIZE_LABEL } from "@/config/commerce";
+import { pricePerM2ToSqft } from "@/lib/tile-math";
 
 type Props = {
   product: ProductWithDetails;
@@ -140,6 +141,14 @@ export function ProductVariantSelector({ product, variants }: Props) {
           </div>
         ) : (
           <div className="text-3xl font-bold text-[#14262B]">{formatPrice(price)}</div>
+        )}
+        {product.category?.type === "tile" && product.pricePerM2 && (
+          <p className="mt-1 text-sm font-medium text-stone-600">
+            {formatPrice(product.pricePerM2)} / m²{" "}
+            <span className="text-stone-400 font-normal">
+              ({formatPrice(pricePerM2ToSqft(product.pricePerM2))} / sq ft)
+            </span>
+          </p>
         )}
         {sku && <p className="mt-1 text-sm text-[#14262B]/70">SKU: {sku}</p>}
       </div>

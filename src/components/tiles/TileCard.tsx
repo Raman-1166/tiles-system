@@ -5,6 +5,7 @@ import Link from "next/link";
 import { shot, deriveSpec, type TileSpec } from "@/lib/tileArt";
 import { getProductRealFinishes, sideColor, mixColor } from "./TileImage";
 import type { Product } from "@/db/schema";
+import { pricePerM2ToSqft } from "@/lib/tile-math";
 import s from "./tiles.module.css";
 
 function formatPrice(cents: number): string {
@@ -269,7 +270,16 @@ export function TileCard({ product, index }: Props) {
           <span className={s.priceAmount}>
             {pricePerM2 ? formatPrice(pricePerM2) : formatPrice(product.priceCents)}
           </span>
-          {pricePerM2 && <span className={s.priceUnit}>/m²</span>}
+          {pricePerM2 ? (
+            <span className="text-xs text-stone-500 font-normal ml-1">
+              /m²{" "}
+              <span className="text-stone-400">
+                ({formatPrice(pricePerM2ToSqft(pricePerM2))}/sq ft)
+              </span>
+            </span>
+          ) : (
+            product.unit && <span className={s.priceUnit}>/{product.unit}</span>
+          )}
         </div>
 
         <Link

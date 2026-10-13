@@ -1,17 +1,19 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 
 type Props = {
   coveragePerBoxSqm: number;
   pricePerBox: number;
+  productSlug?: string;
 };
 
 function formatPrice(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
-export function TileCalculator({ coveragePerBoxSqm, pricePerBox }: Props) {
+export function TileCalculator({ coveragePerBoxSqm, pricePerBox, productSlug }: Props) {
   const [length, setLength] = useState("");
   const [width, setWidth] = useState("");
 
@@ -83,17 +85,20 @@ export function TileCalculator({ coveragePerBoxSqm, pricePerBox }: Props) {
           </div>
           <div className="flex justify-between border-t border-[#14262B]/20 pt-2">
             <span className="font-medium text-[#14262B]">Total cost:</span>
-            <span className="text-xl font-bold text-[#0F6B6B]">
-              {formatPrice(totalCost)}
-            </span>
+            <span className="text-xl font-bold text-[#0F6B6B]">{formatPrice(totalCost)}</span>
           </div>
         </div>
       )}
 
-      <p className="mt-4 text-xs text-[#14262B]/60">
-        * This calculator includes 10% waste allowance. Actual requirements may vary based on your
-        specific installation.
-      </p>
+      <div className="mt-4 flex items-center justify-between gap-2 border-t border-[#14262B]/10 pt-3">
+        <p className="text-xs text-[#14262B]/60">* Standard 10% cut allowance.</p>
+        <Link
+          href={`/tools/tile-calculator${productSlug ? `?product=${productSlug}` : ""}`}
+          className="text-xs font-semibold text-[#0F6B6B] hover:underline"
+        >
+          Open Advanced Pattern Estimator →
+        </Link>
+      </div>
     </div>
   );
 }

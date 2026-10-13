@@ -3,6 +3,7 @@
 import React, { useRef, useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import * as THREE from "three";
+import { ARButton } from "@/components/product/ARButton";
 import {
   F,
   createStage,
@@ -380,7 +381,7 @@ export function FurnitureViewer({ product }: Props) {
       </div>
 
       {/* ── "Place in 3D room" Ghost Button ── */}
-      <div>
+      <div className="flex flex-wrap items-center gap-3">
         <Link href={`/visualizer?furniture=${product.slug}`} className={s.ghostBtn}>
           <svg
             className="w-4 h-4"
@@ -395,6 +396,17 @@ export function FurnitureViewer({ product }: Props) {
           </svg>
           <span>Place in 3D room</span>
         </Link>
+        {(() => {
+          const slug = product.slug || "";
+          const modelUrl =
+            (product as any).arModelUrl ||
+            (["armchair", "bookshelf", "coffee-table", "floor-lamp"].includes(slug)
+              ? `/models/furniture/${slug}.glb`
+              : null);
+          return modelUrl ? (
+            <ARButton modelUrl={modelUrl} label={product.name || "3D Model"} />
+          ) : null;
+        })()}
       </div>
     </div>
   );

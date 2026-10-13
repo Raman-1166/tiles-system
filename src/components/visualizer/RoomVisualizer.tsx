@@ -1,8 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
+import Link from "next/link";
 import * as THREE from "three";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import type { Product } from "@/db/schema";
+import { useCartStore } from "@/store/cartStore";
 import {
   drawSurface,
   type TileDefinition,
@@ -37,10 +40,6 @@ const ROOMS: Record<RoomType, RoomDef> = {
       ["b", 0.22, 0.66, 0.95, -0.74, 0, -1.3, "#4d6069"],
       ["b", 0.22, 0.66, 0.95, 1.14, 0, -1.3, "#4d6069"],
       ["c", 2.2, 0.02, 0, 0.2, 0.005, 0.5, "#a38d6d"],
-      ["b", 0.9, 0.36, 0.5, 0.2, 0, 0.5, "#7a5a3a"],
-      ["b", 0.45, 0.55, 1.7, -1.77, 0, 0.1, "#6b4d33"],
-      ["c", 0.3, 0.35, 0, 1.5, 0, 1.1, "#7a5a3a"],
-      ["s", 0.55, 0.55, 0.55, 1.5, 0.3, 1.1, "#4f7a52"],
     ],
   },
   kitchen: {
@@ -78,6 +77,76 @@ const ROOMS: Record<RoomType, RoomDef> = {
     ],
   },
 };
+
+interface FurniturePlacement {
+  modelUrl: string;
+  position: [number, number, number];
+  rotation?: [number, number, number];
+  scale?: number;
+}
+
+const GLB_FURNITURE_BY_ROOM: Record<RoomType, FurniturePlacement[]> = {
+  living: [
+    {
+      modelUrl: "/models/furniture/coffee-table.glb",
+      position: [0.2, 0, 0.45],
+      rotation: [0, 0, 0],
+    },
+    {
+      modelUrl: "/models/furniture/bookshelf.glb",
+      position: [-1.75, 0, 0.1],
+      rotation: [0, Math.PI / 2, 0],
+    },
+    {
+      modelUrl: "/models/furniture/floor-lamp.glb",
+      position: [1.5, 0, 1.1],
+      rotation: [0, -Math.PI / 4, 0],
+    },
+    {
+      modelUrl: "/models/furniture/armchair.glb",
+      position: [-1.1, 0, 0.2],
+      rotation: [0, Math.PI / 3, 0],
+    },
+  ],
+  kitchen: [],
+  bath: [],
+};
+
+const modelCache = new Map<string, THREE.Group>();
+let sharedGltfLoader: GLTFLoader | null = null;
+
+function getSharedLoader(): GLTFLoader {
+  if (!sharedGltfLoader) {
+    sharedGltfLoader = new GLTFLoader();
+  }
+  return sharedGltfLoader;
+}
+
+async function loadGlbModel(url: string): Promise<THREE.Group> {
+  const cached = modelCache.get(url);
+  if (cached) {
+    return cached.clone(true);
+  }
+
+  const loader = getSharedLoader();
+  return new Promise((resolve, reject) => {
+    loader.load(
+      url,
+      (gltf) => {
+        gltf.scene.traverse((child) => {
+          if (child instanceof THREE.Mesh) {
+            child.castShadow = true;
+            child.receiveShadow = true;
+          }
+        });
+        modelCache.set(url, gltf.scene);
+        resolve(gltf.scene.clone(true));
+      },
+      undefined,
+      (err) => reject(err)
+    );
+  });
+}
 
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
 
@@ -419,6 +488,31 @@ export function RoomVisualizer({ products, onAddToCart, initialTileIdx = 0, init
         room.add(m);
       });
 
+      // Load binary GLB furniture models into visualizer scene (Task 4.5)
+      const glbPieces = GLB_FURNITURE_BY_ROOM[rk] || [];
+      if (glbPieces.length > 0) {
+        const glbContainer = new THREE.Group();
+        glbContainer.name = "glb-furniture-container";
+        room.add(glbContainer);
+
+        glbPieces.forEach((piece) => {
+          loadGlbModel(piece.modelUrl)
+            .then((model) => {
+              model.position.set(...piece.position);
+              if (piece.rotation) model.rotation.set(...piece.rotation);
+              if (piece.scale) model.scale.setScalar(piece.scale);
+              glbContainer.add(model);
+              needRef.current = 1;
+              if (rendererRef.current) {
+                rendererRef.current.shadowMap.needsUpdate = true;
+              }
+            })
+            .catch((err) => {
+              console.warn("Could not load GLB furniture in visualizer:", piece.modelUrl, err);
+            });
+        });
+      }
+
       // FIX 2: Debug bounding box
       const bbox = new THREE.Box3().setFromObject(room);
       console.log("Room bounding box center:", bbox.getCenter(new THREE.Vector3()).toArray());
@@ -631,6 +725,46 @@ export function RoomVisualizer({ products, onAddToCart, initialTileIdx = 0, init
     } catch {
       setStatus("idle");
     }
+  };
+
+  // Synchronize visualizer state with URL search parameters (Task 4.4)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const currentTile = products[tileIdx];
+    if (!currentTile) return;
+
+    const params = new URLSearchParams(window.location.search);
+    params.set("tile", currentTile.slug);
+    params.set("room", roomType);
+    params.set("target", target);
+    params.set("layout", layout);
+    if (night) {
+      params.set("night", "true");
+    } else {
+      params.delete("night");
+    }
+
+    const newUrl = `${window.location.pathname}?${params.toString()}`;
+    window.history.replaceState(null, "", newUrl);
+  }, [tileIdx, roomType, target, layout, night, products]);
+
+  // High-resolution Canvas PNG Snapshot Export (Task 4.4)
+  const handleExportSnapshot = () => {
+    if (!rendererRef.current || !sceneRef.current || !cameraRef.current) return;
+    rendererRef.current.render(sceneRef.current, cameraRef.current);
+    const canvas = rendererRef.current.domElement;
+    const dataUrl = canvas.toDataURL("image/png");
+
+    const a = document.createElement("a");
+    const currentTile = products[tileIdx];
+    const tileSlug = currentTile ? currentTile.slug : "tile";
+    a.download = `clay-and-co-${roomType}-${tileSlug}-visualizer.png`;
+    a.href = dataUrl;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+
+    useCartStore.getState().showToast("Downloaded 3D room rendering snapshot! 📸", "success");
   };
 
   return (
@@ -901,17 +1035,36 @@ export function RoomVisualizer({ products, onAddToCart, initialTileIdx = 0, init
           </p>
         </div>
 
-        <button
-          onClick={handleAddToCart}
-          disabled={status === "loading"}
-          className="rounded-full bg-stone-900 px-6 py-3 text-sm font-semibold uppercase tracking-wide text-white transition hover:bg-stone-700 disabled:opacity-60"
-        >
-          {status === "done"
-            ? "Added to cart ✓"
-            : status === "loading"
-              ? "Adding…"
-              : "Add these tiles to cart"}
-        </button>
+        <div className="space-y-2">
+          <button
+            onClick={handleAddToCart}
+            disabled={status === "loading"}
+            className="w-full cursor-pointer rounded-full bg-stone-900 px-6 py-3 text-sm font-semibold uppercase tracking-wide text-white transition hover:bg-stone-700 disabled:opacity-60"
+          >
+            {status === "done"
+              ? "Added to cart ✓"
+              : status === "loading"
+                ? "Adding…"
+                : "Add these tiles to cart"}
+          </button>
+
+          <div className="flex gap-2">
+            <Link
+              href={`/tools/tile-calculator?product=${products[tileIdx]?.slug}&layout=${layout}&area=${cov.area.toFixed(1)}`}
+              className="flex-1 rounded-full border border-stone-300 bg-white py-2.5 text-center text-xs font-semibold text-stone-800 hover:bg-stone-50 transition shadow-2xs"
+            >
+              📐 Project Box Estimator →
+            </Link>
+            <button
+              type="button"
+              onClick={handleExportSnapshot}
+              className="cursor-pointer flex items-center justify-center gap-1.5 rounded-full border border-stone-300 bg-white px-4 py-2.5 text-xs font-semibold text-stone-800 hover:bg-stone-50 transition shadow-2xs"
+              title="Download high-resolution 3D PNG render"
+            >
+              <span>📸 Snapshot</span>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

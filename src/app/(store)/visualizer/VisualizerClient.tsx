@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import type { ProductWithDetails } from "@/db/queries";
+import { useCartStore } from "@/store/cartStore";
 
 // Dynamically import the heavy 3D component — no SSR
 const RoomVisualizer = dynamic(
@@ -68,7 +69,14 @@ export function VisualizerClient({ tiles, initialTileIdx = 0, initialRoom }: Pro
 
     if (res.ok) {
       const data = await res.json();
-      console.log("Added to cart:", data);
+      useCartStore.getState().setFromResponse(data);
+      useCartStore
+        .getState()
+        .showToast(
+          `Added ${quantity} tiles (${meta.room ?? "room"} project) to your bag`,
+          "success"
+        );
+      useCartStore.getState().openMiniCart();
     }
   };
 

@@ -156,6 +156,7 @@ export default async function ProductPage({ params }: Props) {
                   <TileCalculator
                     coveragePerBoxSqm={parseFloat(product.coveragePerBoxSqm)}
                     pricePerBox={lowestPrice}
+                    productSlug={product.slug}
                   />
                 </div>
               )}
