@@ -1,0 +1,16 @@
+.next/
+out/
+build/
+dist/
+node_modules/
+package-lock.json
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+coverage/
+playwright-report/
+test-results/
+public/draco/
+public/models/
+drizzle/
+task/
+*.sql
