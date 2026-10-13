@@ -22,12 +22,10 @@ export default defineConfig({
       use: { ...devices["Pixel 5"], viewport: { width: 390, height: 844 } },
     },
   ],
-  webServer: process.env.CI
-    ? {
-        command: "npm run start",
-        url: "http://localhost:3000/api/health",
-        reuseExistingServer: false,
-        timeout: 120 * 1000,
-      }
-    : undefined,
+  webServer: {
+    command: process.env.CI ? "npm run start" : "npm run dev",
+    url: "http://localhost:3000/api/health",
+    reuseExistingServer: !process.env.CI,
+    timeout: 120 * 1000,
+  },
 });

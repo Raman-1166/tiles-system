@@ -14,16 +14,14 @@ export async function readSessionId(): Promise<string | null> {
  * Helper for Route Handlers: reads the session id from the incoming request
  * and, if missing, generates one and writes it onto the outgoing response.
  */
-export function getOrCreateSessionId(
-  request: NextRequest,
-  response: NextResponse
-): string {
+export function getOrCreateSessionId(request: NextRequest, response: NextResponse): string {
   const existing = request.cookies.get(SESSION_COOKIE)?.value;
   if (existing) return existing;
 
   const id = randomUUID();
   response.cookies.set(SESSION_COOKIE, id, {
-    httpOnly: false,
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
     maxAge: 60 * 60 * 24 * 90,

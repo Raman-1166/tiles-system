@@ -9,9 +9,17 @@ export async function GET() {
     await db.execute(sql`select 1`);
     return Response.json({ ok: true, status: "healthy" });
   } catch (error) {
+    const isProd = process.env.NODE_ENV === "production";
     return Response.json(
-      { ok: false, status: "unhealthy", error: error instanceof Error ? error.message : "Unknown error" },
-      { status: 503 }
+      {
+        ok: false,
+        status: "unhealthy",
+        ...(isProd ? {} : { error: error instanceof Error ? error.message : "Unknown error" }),
+      },
+      {
+        status: 503,
+        headers: { "Cache-Control": "no-store, no-cache, must-revalidate" },
+      }
     );
   }
 }

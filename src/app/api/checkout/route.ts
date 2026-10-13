@@ -1,106 +1,115 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
+import { z } from "zod";
 import { SESSION_COOKIE } from "@/lib/session";
-import { getCartLines, clearCart, cartTotalCents } from "@/lib/cart";
-import { getDb } from "@/db";
-import { orders, orderItems } from "@/db/schema";
+import { OrderService } from "@/services/order.service";
+import { getPaymentProvider } from "@/services/payment.provider";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { jsonError, jsonSuccess, AppError, ERROR_CODES } from "@/lib/api-response";
+
+const checkoutSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  email: z.string().email("Valid email required"),
+  phone: z.string().optional(),
+  line1: z.string().min(3, "Address line 1 is required"),
+  line2: z.string().optional(),
+  city: z.string().min(2, "City is required"),
+  region: z.string().min(2, "State or Province is required"),
+  postalCode: z.string().min(2, "Postal code is required"),
+  country: z.string().default("US"),
+  shippingMethod: z.enum(["standard", "express", "overnight"]).default("standard"),
+});
 
 export async function POST(request: NextRequest) {
   try {
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "127.0.0.1";
     const sessionId = request.cookies.get(SESSION_COOKIE)?.value ?? null;
+
     if (!sessionId) {
-      return NextResponse.json({ error: "No active session" }, { status: 400 });
+      return jsonError(ERROR_CODES.BAD_REQUEST, "No active cart session found", 400);
     }
 
-    const lines = await getCartLines(sessionId);
-    if (!lines || lines.length === 0) {
-      return NextResponse.json({ error: "Cart is empty" }, { status: 400 });
-    }
-
-    const body = await request.json().catch(() => ({}));
-    const {
-      name = "Guest Customer",
-      email = "customer@example.com",
-      line1 = "123 Architectural Way",
-      line2 = "",
-      city = "Design District",
-      region = "CA",
-      postalCode = "90210",
-      country = "US",
-      shippingMethod = "standard",
-    } = body;
-
-    const subtotalCents = cartTotalCents(lines);
-    const shippingCents = shippingMethod === "express" ? 2500 : 0;
-    const taxCents = Math.round(subtotalCents * 0.08); // 8% sales tax
-    const totalCents = subtotalCents + shippingCents + taxCents;
-
-    // Generate unique order number (e.g. CLAY-28491)
-    const randomDigits = Math.floor(10000 + Math.random() * 90000);
-    const orderNumber = `CLAY-${randomDigits}`;
-
-    try {
-      const { db } = getDb();
-      // Insert order into DB
-      const result = await db.insert(orders).values({
-        orderNumber,
-        email,
-        status: "paid",
-        subtotalCents,
-        shippingCents,
-        taxCents,
-        totalCents,
-        currency: "USD",
-        shippingAddress: {
-          name,
-          line1,
-          line2: line2 || undefined,
-          city,
-          region,
-          postalCode,
-          country,
-        },
-      });
-
-      const orderInsertId = Number(
-        (result as unknown as { insertId: number | bigint }).insertId ||
-        (result as unknown as { insertId: number | bigint }[])[0]?.insertId
-      );
-
-      if (orderInsertId) {
-        // Insert order items
-        for (const line of lines) {
-          await db.insert(orderItems).values({
-            orderId: orderInsertId,
-            variantId: line.variantId ?? null,
-            name: line.product.name,
-            sku: line.product.slug,
-            unitPriceCents: line.product.priceCents,
-            quantity: line.quantity,
-          });
-        }
-      }
-    } catch (dbErr) {
-      console.warn("Could not save order to database (proceeding with confirmation):", dbErr);
-    }
-
-    // Clear cart on successful checkout
-    await clearCart(sessionId).catch(() => {});
-
-    return NextResponse.json({
-      ok: true,
-      orderNumber,
-      subtotalCents,
-      shippingCents,
-      taxCents,
-      totalCents,
-      itemCount: lines.length,
-      createdAt: new Date().toISOString(),
+    // Rate limiting: max 10 checkout attempts per minute
+    const rateLimit = await checkRateLimit(`checkout:${ip}:${sessionId}`, {
+      max: 10,
+      intervalMs: 60_000,
     });
-  } catch (err: any) {
-    console.error("Checkout error:", err);
-    return NextResponse.json(
-      { error: err?.message || "Checkout failed" },
-      { status: 500 }
-    );
+    if (!rateLimit.allowed) {
+      return jsonError(
+        ERROR_CODES.RATE_LIMITED,
+        `Too many checkout attempts. Please wait ${Math.ceil(rateLimit.resetMs / 1000)} seconds.`,
+        429
+      );
+    }
+
+    // Parse & validate body
+    const rawBody = await request.json().catch(() => ({}));
+    const parseResult = checkoutSchema.safeParse(rawBody);
+    if (!parseResult.success) {
+      return jsonError(
+        ERROR_CODES.VALIDATION_ERROR,
+        "Invalid checkout details",
+        400,
+        parseResult.error.flatten().fieldErrors
+      );
+    }
+
+    const data = parseResult.data;
+    const idempotencyKey =
+      request.headers.get("idempotency-key") ||
+      request.headers.get("x-idempotency-key") ||
+      undefined;
+
+    // 1. Create or retrieve pending order
+    const { order, items, token } = await OrderService.createPendingOrder({
+      sessionId,
+      email: data.email,
+      phone: data.phone,
+      shippingAddress: {
+        name: data.name,
+        line1: data.line1,
+        line2: data.line2,
+        city: data.city,
+        region: data.region,
+        postalCode: data.postalCode,
+        country: data.country,
+      },
+      shippingMethod: data.shippingMethod,
+      idempotencyKey,
+    });
+
+    // 2. Request hosted checkout session from payment provider
+    const origin = request.nextUrl.origin || "http://localhost:3000";
+    const paymentProvider = getPaymentProvider();
+
+    const checkoutSession = await paymentProvider.createCheckoutSession({
+      orderNumber: order.orderNumber,
+      customerEmail: order.email,
+      totalCents: order.totalCents,
+      currency: order.currency,
+      lineItems: items.map((i) => ({
+        name: i.name,
+        quantity: i.quantity,
+        unitPriceCents: i.unitPriceCents,
+      })),
+      shippingCents: order.shippingCents,
+      taxCents: order.taxCents,
+      successUrl: `${origin}/order/${order.orderNumber}?token=${token}&session_id={CHECKOUT_SESSION_ID}`,
+      cancelUrl: `${origin}/checkout`,
+    });
+
+    return jsonSuccess({
+      ok: true,
+      orderNumber: order.orderNumber,
+      checkoutUrl: checkoutSession.checkoutUrl,
+      sessionId: checkoutSession.sessionId,
+      totalCents: order.totalCents,
+      token,
+    });
+  } catch (error) {
+    if (error instanceof AppError) {
+      return jsonError(error.code, error.message, error.status, error.details);
+    }
+    console.error("Checkout route error:", error);
+    return jsonError(ERROR_CODES.INTERNAL_ERROR, "An error occurred during checkout", 500);
   }
 }

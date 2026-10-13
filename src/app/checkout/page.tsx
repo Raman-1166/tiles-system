@@ -37,7 +37,17 @@ export default function CheckoutPage() {
   const [lines, setLines] = useState<CartLine[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [orderResult, setOrderResult] = useState<OrderResult | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [idempotencyKey, setIdempotencyKey] = useState<string>("");
+
+  // Initialize idempotency key once per page session
+  useEffect(() => {
+    setIdempotencyKey(
+      typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `idemp_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
+    );
+  }, []);
 
   // Form fields
   const [form, setForm] = useState({
@@ -72,25 +82,28 @@ export default function CheckoutPage() {
     fetchCart();
   }, []);
 
-  const subtotalCents = lines.reduce(
-    (acc, l) => acc + l.quantity * l.product.priceCents,
-    0
-  );
+  const subtotalCents = lines.reduce((acc, l) => acc + l.quantity * l.product.priceCents, 0);
   const shippingCents = form.shippingMethod === "express" ? 2500 : 0;
   const taxCents = Math.round(subtotalCents * 0.08);
   const totalCents = subtotalCents + shippingCents + taxCents;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitting) return; // Prevent double submit
     setSubmitting(true);
+    setErrorMessage(null);
 
     try {
       const res = await fetch("/api/checkout", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": idempotencyKey,
+        },
         body: JSON.stringify({
-          name: `${form.firstName} ${form.lastName}`,
+          name: `${form.firstName} ${form.lastName}`.trim(),
           email: form.email,
+          phone: form.phone,
           line1: form.line1,
           line2: form.line2,
           city: form.city,
@@ -103,13 +116,20 @@ export default function CheckoutPage() {
 
       const data = await res.json();
       if (res.ok && data.ok) {
-        setOrderResult(data);
+        if (data.checkoutUrl) {
+          window.location.href = data.checkoutUrl;
+          return;
+        }
+        if (data.orderNumber) {
+          window.location.href = `/order/${data.orderNumber}?token=${encodeURIComponent(data.token || "")}`;
+          return;
+        }
       } else {
-        alert(data.error || "Unable to complete order.");
+        setErrorMessage(data?.error?.message || "Unable to complete order.");
+        setSubmitting(false);
       }
-    } catch (err) {
-      alert("Something went wrong placing your order.");
-    } finally {
+    } catch {
+      setErrorMessage("Something went wrong communicating with checkout. Please try again.");
       setSubmitting(false);
     }
   };
@@ -125,81 +145,19 @@ export default function CheckoutPage() {
     );
   }
 
-  // Confirmation view
-  if (orderResult) {
-    return (
-      <main className="min-h-screen bg-[#E4E8E3] py-16 px-4 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-2xl rounded-3xl bg-[#F6F4EE] p-8 sm:p-12 shadow-sm border border-stone-200">
-          <div className="text-center">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
-              <svg className="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-            </div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-[#0F6B6B]">
-              Order Confirmed
-            </p>
-            <h1 className="mt-1 text-3xl font-bold tracking-tight text-[#14262B]">
-              Thank you for your order!
-            </h1>
-            <p className="mt-2 text-stone-600 text-sm">
-              We&apos;ve sent a full confirmation receipt and delivery tracking details to{" "}
-              <strong className="text-[#14262B]">{form.email}</strong>.
-            </p>
-          </div>
-
-          <div className="mt-8 rounded-2xl bg-white p-6 border border-stone-200/80 shadow-sm space-y-4">
-            <div className="flex items-center justify-between border-b border-stone-100 pb-3 text-sm">
-              <span className="text-stone-500">Order reference</span>
-              <span className="font-mono font-bold text-[#14262B] tracking-wide">
-                {orderResult.orderNumber}
-              </span>
-            </div>
-            <div className="flex items-center justify-between border-b border-stone-100 pb-3 text-sm">
-              <span className="text-stone-500">Shipping to</span>
-              <span className="font-medium text-[#14262B] text-right">
-                {form.firstName} {form.lastName}<br />
-                <span className="text-xs text-stone-500">{form.line1}, {form.city}</span>
-              </span>
-            </div>
-            <div className="flex items-center justify-between border-b border-stone-100 pb-3 text-sm">
-              <span className="text-stone-500">Delivery service</span>
-              <span className="font-medium text-[#14262B]">
-                {form.shippingMethod === "express" ? "Express Architectural (1-2 days)" : "Standard Ground (3-5 days)"}
-              </span>
-            </div>
-            <div className="flex items-center justify-between text-base font-semibold text-[#14262B] pt-1">
-              <span>Total paid</span>
-              <span>{formatCurrency(orderResult.totalCents)}</span>
-            </div>
-          </div>
-
-          <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
-            <Link
-              href="/shop"
-              className="inline-flex justify-center items-center rounded-full bg-[#14262B] px-8 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#0F6B6B]"
-            >
-              Continue Shopping →
-            </Link>
-            <Link
-              href="/"
-              className="inline-flex justify-center items-center rounded-full bg-white border border-stone-300 px-6 py-3.5 text-sm font-semibold text-stone-800 transition hover:bg-stone-50"
-            >
-              Back to Home
-            </Link>
-          </div>
-        </div>
-      </main>
-    );
-  }
-
   // Empty cart view
   if (lines.length === 0) {
     return (
       <main className="min-h-screen bg-[#E4E8E3] flex items-center justify-center p-6">
         <div className="rounded-3xl bg-[#F6F4EE] p-12 text-center shadow-sm max-w-md border border-stone-200">
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-stone-200/80 text-stone-600">
-            <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg
+              className="h-6 w-6"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
               <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4zM3 6h18M16 10a4 4 0 0 1-8 0" />
             </svg>
           </div>
@@ -242,10 +200,17 @@ export default function CheckoutPage() {
         <div className="grid gap-8 lg:grid-cols-12 items-start">
           {/* Left Form Column (7 cols) */}
           <form onSubmit={handleSubmit} className="lg:col-span-7 space-y-6">
+            {errorMessage && (
+              <div className="rounded-xl bg-red-100 border border-red-300 p-4 text-sm text-red-800 font-medium">
+                {errorMessage}
+              </div>
+            )}
             {/* Contact Details */}
             <div className="rounded-2xl bg-[#F6F4EE] p-6 sm:p-7 shadow-sm border border-stone-200/80">
               <h2 className="text-lg font-bold text-[#14262B] mb-4 flex items-center gap-2">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#14262B] text-white text-xs font-bold">1</span>
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#14262B] text-white text-xs font-bold">
+                  1
+                </span>
                 Contact Information
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -303,7 +268,9 @@ export default function CheckoutPage() {
             {/* Shipping Address */}
             <div className="rounded-2xl bg-[#F6F4EE] p-6 sm:p-7 shadow-sm border border-stone-200/80">
               <h2 className="text-lg font-bold text-[#14262B] mb-4 flex items-center gap-2">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#14262B] text-white text-xs font-bold">2</span>
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#14262B] text-white text-xs font-bold">
+                  2
+                </span>
                 Shipping Address
               </h2>
               <div className="space-y-4">
@@ -376,7 +343,9 @@ export default function CheckoutPage() {
             {/* Delivery Method */}
             <div className="rounded-2xl bg-[#F6F4EE] p-6 sm:p-7 shadow-sm border border-stone-200/80">
               <h2 className="text-lg font-bold text-[#14262B] mb-4 flex items-center gap-2">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#14262B] text-white text-xs font-bold">3</span>
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#14262B] text-white text-xs font-bold">
+                  3
+                </span>
                 Delivery Method
               </h2>
               <div className="space-y-3">
@@ -396,8 +365,12 @@ export default function CheckoutPage() {
                       className="accent-[#14262B]"
                     />
                     <div>
-                      <p className="text-sm font-semibold text-[#14262B]">Standard Fragile Freight</p>
-                      <p className="text-xs text-stone-500">Delivered carefully in 3–5 business days</p>
+                      <p className="text-sm font-semibold text-[#14262B]">
+                        Standard Fragile Freight
+                      </p>
+                      <p className="text-xs text-stone-500">
+                        Delivered carefully in 3–5 business days
+                      </p>
                     </div>
                   </div>
                   <span className="text-sm font-bold text-emerald-700">FREE</span>
@@ -419,8 +392,12 @@ export default function CheckoutPage() {
                       className="accent-[#14262B]"
                     />
                     <div>
-                      <p className="text-sm font-semibold text-[#14262B]">Express Architectural Priority</p>
-                      <p className="text-xs text-stone-500">Scheduled 1–2 business day liftgate delivery</p>
+                      <p className="text-sm font-semibold text-[#14262B]">
+                        Express Architectural Priority
+                      </p>
+                      <p className="text-xs text-stone-500">
+                        Scheduled 1–2 business day liftgate delivery
+                      </p>
                     </div>
                   </div>
                   <span className="text-sm font-semibold text-stone-800">$25.00</span>
@@ -431,7 +408,9 @@ export default function CheckoutPage() {
             {/* Payment Details */}
             <div className="rounded-2xl bg-[#F6F4EE] p-6 sm:p-7 shadow-sm border border-stone-200/80">
               <h2 className="text-lg font-bold text-[#14262B] mb-4 flex items-center gap-2">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#14262B] text-white text-xs font-bold">4</span>
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#14262B] text-white text-xs font-bold">
+                  4
+                </span>
                 Payment
               </h2>
               <div className="rounded-xl border border-stone-200 bg-white p-4 space-y-3">
@@ -490,7 +469,13 @@ export default function CheckoutPage() {
                 ) : (
                   <>
                     <span>Place Order · {formatCurrency(totalCents)}</span>
-                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <svg
+                      className="h-4 w-4"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                    >
                       <path d="M5 12h14M12 5l7 7-7 7" />
                     </svg>
                   </>
@@ -584,7 +569,9 @@ export default function CheckoutPage() {
               <div className="mt-6 border-t border-stone-200 pt-4 space-y-2 text-sm text-stone-600">
                 <div className="flex justify-between">
                   <span>Subtotal</span>
-                  <span className="font-medium text-[#14262B]">{formatCurrency(subtotalCents)}</span>
+                  <span className="font-medium text-[#14262B]">
+                    {formatCurrency(subtotalCents)}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span>Shipping</span>

@@ -98,6 +98,6 @@ export const env = new Proxy({} as Env, {
     if (!cachedEnv) {
       cachedEnv = validateEnv();
     }
-    return (cachedEnv as any)[prop];
+    return (cachedEnv as unknown as Record<string, unknown>)[prop];
   },
 });

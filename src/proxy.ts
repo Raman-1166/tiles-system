@@ -51,9 +51,38 @@ export async function isAdminSessionEdge(request: NextRequest): Promise<boolean>
   return true;
 }
 
+function isAllowedOrigin(request: NextRequest): boolean {
+  const origin = request.headers.get("origin");
+  if (!origin) return true; // Direct API or same-origin non-CORS
+  const host = request.headers.get("host");
+  if (!host) return true;
+  try {
+    const originUrl = new URL(origin);
+    return originUrl.host === host;
+  } catch {
+    return false;
+  }
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const method = request.method;
 
+  // 1. Origin check on state-changing API routes (excluding external webhooks)
+  if (
+    ["POST", "PUT", "PATCH", "DELETE"].includes(method) &&
+    pathname.startsWith("/api") &&
+    !pathname.startsWith("/api/webhooks")
+  ) {
+    if (!isAllowedOrigin(request)) {
+      return NextResponse.json(
+        { error: { code: "FORBIDDEN", message: "Cross-origin request blocked" } },
+        { status: 403 }
+      );
+    }
+  }
+
+  // 2. Admin dashboard route guard
   if (pathname.startsWith("/admin") && pathname !== "/admin/login") {
     const ok = await isAdminSessionEdge(request);
     if (!ok) {
@@ -67,5 +96,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*"],
+  matcher: ["/admin/:path*", "/api/:path*"],
 };

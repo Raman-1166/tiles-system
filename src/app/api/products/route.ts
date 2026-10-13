@@ -1,17 +1,23 @@
-import { NextRequest, NextResponse } from "next/server";
-import { listProducts, listCategories } from "@/lib/products";
+import { NextRequest } from "next/server";
+import { ProductService } from "@/services/product.service";
+import { listCategories } from "@/db/queries";
+import { jsonError, jsonSuccess, ERROR_CODES } from "@/lib/api-response";
 
 export async function GET(request: NextRequest) {
-  const categorySlug = request.nextUrl.searchParams.get("category");
+  try {
+    const categorySlug = request.nextUrl.searchParams.get("category");
 
-  // If category slug provided, find the category ID first
-  let categoryId: number | undefined;
-  if (categorySlug) {
-    const allCategories = await listCategories();
-    const matchedCategory = allCategories.find((c) => c.slug === categorySlug);
-    categoryId = matchedCategory?.id;
+    let categoryId: number | undefined;
+    if (categorySlug) {
+      const allCategories = await listCategories();
+      const matchedCategory = allCategories.find((c) => c.slug === categorySlug);
+      categoryId = matchedCategory?.id;
+    }
+
+    const items = await ProductService.list({ categoryId });
+    return jsonSuccess({ products: items }, 200, true);
+  } catch (error) {
+    console.error("GET /api/products error:", error);
+    return jsonError(ERROR_CODES.INTERNAL_ERROR, "Failed to load products", 500);
   }
-
-  const items = await listProducts({ categoryId });
-  return NextResponse.json({ products: items });
 }

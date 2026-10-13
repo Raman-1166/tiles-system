@@ -4,8 +4,8 @@ import { HeroSection } from "@/components/hero/HeroSection";
 import { TileImage } from "@/components/tiles/TileImage";
 import { FurnitureImage } from "@/components/furniture/FurnitureImage";
 import { VisualizerTeaser } from "@/components/visualizer/VisualizerTeaser";
-import { listProducts, formatPrice } from "@/lib/products";
-import { listCategories } from "@/db/queries";
+import { listProducts, listCategories } from "@/db/queries";
+import { formatMoney } from "@/lib/money";
 import type { ProductWithDetails } from "@/db/queries";
 
 export const dynamic = "force-dynamic";
@@ -50,7 +50,8 @@ export default async function HomePage() {
           <div className="rounded-xl bg-amber-50 border border-amber-200 p-6">
             <h3 className="text-lg font-semibold text-amber-900">Database not connected</h3>
             <p className="mt-2 text-sm text-amber-700">
-              Set DATABASE_URL in your environment to see products. Run migrations and seed the database first.
+              Set DATABASE_URL in your environment to see products. Run migrations and seed the
+              database first.
             </p>
           </div>
         </section>
@@ -61,7 +62,9 @@ export default async function HomePage() {
           <div className="flex items-end justify-between">
             <div>
               <p className="text-sm uppercase tracking-[0.2em] text-stone-500">Shop tiles</p>
-              <h2 className="mt-2 text-3xl font-semibold text-stone-900">Glazed, thick, and ready to turn</h2>
+              <h2 className="mt-2 text-3xl font-semibold text-stone-900">
+                Glazed, thick, and ready to turn
+              </h2>
             </div>
             <Link
               href={`/shop?category=${tileCategories[0]?.slug || "tile"}`}
@@ -74,16 +77,11 @@ export default async function HomePage() {
             {tiles.slice(0, 6).map((p) => (
               <Link key={p.id} href={`/shop/tile/${p.slug}`} className="group">
                 <div className="aspect-square overflow-hidden rounded-xl bg-stone-100 transition group-hover:scale-105">
-                  <TileImage
-                    product={p}
-                    variant="closeup"
-                    size={240}
-                    className="h-full w-full"
-                  />
+                  <TileImage product={p} variant="closeup" size={240} className="h-full w-full" />
                 </div>
                 <p className="mt-2 text-sm font-medium text-stone-800">{p.name}</p>
                 <p className="text-xs text-stone-500">
-                  {formatPrice(p.priceCents)} {p.unit}
+                  {formatMoney(p.priceCents)} {p.unit}
                 </p>
               </Link>
             ))}
@@ -104,21 +102,46 @@ export default async function HomePage() {
               </h2>
               <p className="mt-4 text-base text-stone-700 leading-relaxed max-w-lg">
                 Drop any tile from the shop into a 3D bathroom, kitchen or living room. Change the
-                size, grout colour, layout and lighting, then calculate exact boxes needed for your project.
+                size, grout colour, layout and lighting, then calculate exact boxes needed for your
+                project.
               </p>
 
               {/* Feature Highlights */}
               <div className="mt-6 flex flex-wrap gap-2.5">
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-medium text-stone-700 shadow-sm border border-stone-200">
-                  <svg className="w-3.5 h-3.5 text-[#0F6B6B]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                  <svg
+                    className="w-3.5 h-3.5 text-[#0F6B6B]"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                  >
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
                   3 Custom 3D Environments
                 </span>
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-medium text-stone-700 shadow-sm border border-stone-200">
-                  <svg className="w-3.5 h-3.5 text-[#0F6B6B]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                  <svg
+                    className="w-3.5 h-3.5 text-[#0F6B6B]"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                  >
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
                   Adjustable Grout & Layouts
                 </span>
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-medium text-stone-700 shadow-sm border border-stone-200">
-                  <svg className="w-3.5 h-3.5 text-[#0F6B6B]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                  <svg
+                    className="w-3.5 h-3.5 text-[#0F6B6B]"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                  >
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
                   Real-time Glaze Reflections
                 </span>
               </div>
@@ -129,7 +152,15 @@ export default async function HomePage() {
                   className="inline-flex items-center gap-2 rounded-full bg-stone-900 px-7 py-3.5 text-sm font-semibold tracking-wide text-white shadow-md transition hover:bg-[#0F6B6B] hover:shadow-lg active:scale-[0.99]"
                 >
                   <span>Launch 3D Visualizer</span>
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                  <svg
+                    className="w-4 h-4"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path d="M5 12h14M12 5l7 7-7 7" />
+                  </svg>
                 </Link>
                 <Link
                   href="/shop?type=tile"
@@ -165,16 +196,16 @@ export default async function HomePage() {
           </div>
           <div className="mt-8 grid grid-cols-2 gap-6 lg:grid-cols-4">
             {furniture.map((p) => (
-              <Link key={p.id} href={`/shop/${p.category?.slug || "furniture"}/${p.slug}`} className="group">
+              <Link
+                key={p.id}
+                href={`/shop/${p.category?.slug || "furniture"}/${p.slug}`}
+                className="group"
+              >
                 <div className="aspect-square overflow-hidden rounded-xl bg-stone-100 transition group-hover:scale-105">
-                  <FurnitureImage
-                    product={p}
-                    size={240}
-                    className="h-full w-full"
-                  />
+                  <FurnitureImage product={p} size={240} className="h-full w-full" />
                 </div>
                 <p className="mt-2 text-sm font-medium text-stone-800">{p.name}</p>
-                <p className="text-xs text-stone-500">{formatPrice(p.priceCents)}</p>
+                <p className="text-xs text-stone-500">{formatMoney(p.priceCents)}</p>
               </Link>
             ))}
           </div>
