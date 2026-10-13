@@ -36,10 +36,7 @@ function LoginForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label
-          htmlFor="admin-password"
-          className="mb-1 block text-sm font-medium text-stone-700"
-        >
+        <label htmlFor="admin-password" className="mb-1 block text-sm font-medium text-stone-700">
           Password
         </label>
         <input

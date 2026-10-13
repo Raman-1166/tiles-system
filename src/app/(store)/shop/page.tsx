@@ -28,7 +28,11 @@ async function TilesView() {
       )
       .map((p) => {
         // strip productVariants / category (ProductWithDetails → Product shape)
-        const { category: _c, productVariants: _v, ...product } = p as typeof p & {
+        const {
+          category: _c,
+          productVariants: _v,
+          ...product
+        } = p as typeof p & {
           category: unknown;
           productVariants: unknown;
         };
@@ -77,13 +81,8 @@ async function FurnitureView() {
   return <FurnitureSection products={products} />;
 }
 
-
 // ── Page ────────────────────────────────────────────────────────────────────
-export default async function ShopPage({
-  searchParams,
-}: {
-  searchParams: SearchParams;
-}) {
+export default async function ShopPage({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams;
 
   let resolvedType: "tile" | "furniture" | undefined = params.type;
@@ -135,11 +134,7 @@ export default async function ShopPage({
             </div>
           }
         >
-          {resolvedType === "furniture" ? (
-            <FurnitureView />
-          ) : (
-            <TilesView />
-          )}
+          {resolvedType === "furniture" ? <FurnitureView /> : <TilesView />}
         </Suspense>
       </div>
     </div>

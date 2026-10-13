@@ -9,11 +9,7 @@ export const metadata = {
 
 type SearchParams = Promise<{ tile?: string; room?: string }>;
 
-export default async function VisualizerPage({
-  searchParams,
-}: {
-  searchParams: SearchParams;
-}) {
+export default async function VisualizerPage({ searchParams }: { searchParams: SearchParams }) {
   const { tile: tileSlug, room: initialRoom } = await searchParams;
 
   let tiles: Awaited<ReturnType<typeof listProducts>> = [];
@@ -33,7 +29,10 @@ export default async function VisualizerPage({
 
   // Resolve initial index from ?tile=slug
   const initialIdx = tileSlug
-    ? Math.max(0, tiles.findIndex((t) => t.slug === tileSlug))
+    ? Math.max(
+        0,
+        tiles.findIndex((t) => t.slug === tileSlug)
+      )
     : 0;
 
   return (

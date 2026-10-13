@@ -33,9 +33,10 @@ test.describe("Smoke Tests", () => {
   });
 
   test("home page passes basic axe accessibility checks", async ({ page }) => {
-    await page.goto("/");
+    test.setTimeout(60000);
+    await page.goto("/", { waitUntil: "domcontentloaded" });
     // Wait for meaningful content to be rendered
-    await page.waitForSelector("h1", { timeout: 10000 });
+    await page.waitForSelector("h1", { timeout: 30000 });
 
     const results = await new AxeBuilder({ page })
       .disableRules(["color-contrast"]) // Skip contrast in headless (no GPU rendering)

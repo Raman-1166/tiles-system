@@ -1,9 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { Suspense } from "react";
 import "./globals.css";
-import { Navbar } from "@/components/Navbar";
-import { Footer } from "@/components/Footer";
 
 export const metadata: Metadata = {
   title: "Clay & Co. — Tiles you can turn.",
@@ -14,13 +11,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <body className="bg-[#faf7f0] text-stone-900 antialiased">
-        <Suspense fallback={null}>
-          <Navbar />
-        </Suspense>
-        {children}
-        <Footer />
-      </body>
+      <body className="bg-[#faf7f0] text-stone-900 antialiased">{children}</body>
     </html>
   );
 }

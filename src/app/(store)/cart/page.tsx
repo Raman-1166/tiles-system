@@ -162,35 +162,28 @@ function SpecGrid({
 }) {
   if (isTile) {
     const isWallTile =
-      product.slug?.toLowerCase().includes("wall") ||
-      product.name?.toLowerCase().includes("wall");
+      product.slug?.toLowerCase().includes("wall") || product.name?.toLowerCase().includes("wall");
     const room =
       (meta?.room as string) ||
       (meta?.roomType as string) ||
       (isWallTile ? "Bathroom / Wall" : "Living & Floor");
     const surfaces =
-      (meta?.surfaces as string) ||
-      (meta?.surface as string) ||
-      (isWallTile ? "Wall" : "Floor");
-    const layout =
-      (meta?.layout as string) || product.tileLayout || "Straight grid";
+      (meta?.surfaces as string) || (meta?.surface as string) || (isWallTile ? "Wall" : "Floor");
+    const layout = (meta?.layout as string) || product.tileLayout || "Straight grid";
     const rawGrout =
-      (meta?.grout as string) ||
-      (meta?.groutColor as string) ||
-      product.groutColor ||
-      "#dedad2";
+      (meta?.grout as string) || (meta?.groutColor as string) || product.groutColor || "#dedad2";
 
     // Clean grout name representation
     const groutName =
       rawGrout.toLowerCase() === "#dedad2" || rawGrout.toLowerCase() === "#ded6c9"
         ? "Warm Grey"
         : rawGrout.toLowerCase() === "#1a2840"
-        ? "Deep Charcoal"
-        : rawGrout.toLowerCase() === "#ffffff"
-        ? "Pure White"
-        : rawGrout.startsWith("#")
-        ? rawGrout.toUpperCase()
-        : rawGrout;
+          ? "Deep Charcoal"
+          : rawGrout.toLowerCase() === "#ffffff"
+            ? "Pure White"
+            : rawGrout.startsWith("#")
+              ? rawGrout.toUpperCase()
+              : rawGrout;
 
     return (
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 py-3 my-3 border-y border-[#CFDCD4]/70 dark:border-[#223832]">
@@ -409,9 +402,7 @@ function TileCoverageBox({
       >
         <div
           className={`h-full transition-all duration-300 ease-out ${
-            isEnough
-              ? "bg-[#0D4D47] dark:bg-[#2DD4BF]"
-              : "bg-amber-600 dark:bg-amber-400"
+            isEnough ? "bg-[#0D4D47] dark:bg-[#2DD4BF]" : "bg-amber-600 dark:bg-amber-400"
           }`}
           style={{ width: `${progressPercent}%` }}
         />
@@ -427,7 +418,8 @@ function TileCoverageBox({
         ) : (
           <div className="flex items-center justify-between gap-3 w-full flex-wrap">
             <p className="text-xs sm:text-sm font-medium text-amber-800 dark:text-amber-200">
-              ⚠️ Short by {shortBy} {shortBy === 1 ? "box" : "boxes"} to cover {area} m² (needs {boxesNeeded} boxes incl. 10% cuts)
+              ⚠️ Short by {shortBy} {shortBy === 1 ? "box" : "boxes"} to cover {area} m² (needs{" "}
+              {boxesNeeded} boxes incl. 10% cuts)
             </p>
             <button
               type="button"
@@ -618,7 +610,8 @@ function EmptyCartState() {
         Your cart is empty
       </h2>
       <p className="text-sm sm:text-base text-stone-500 dark:text-stone-400 max-w-md mx-auto mb-8">
-        Explore our handcrafted porcelain tiles and considered furniture to begin curating your space.
+        Explore our handcrafted porcelain tiles and considered furniture to begin curating your
+        space.
       </p>
 
       <div className="flex items-center justify-center gap-3 flex-wrap">
@@ -855,10 +848,7 @@ export default function CartPage() {
   };
 
   // Calculation of Subtotal & Discount
-  const rawSubtotalCents = lines.reduce(
-    (sum, l) => sum + l.quantity * l.product.priceCents,
-    0
-  );
+  const rawSubtotalCents = lines.reduce((sum, l) => sum + l.quantity * l.product.priceCents, 0);
   // Total in Rupees using project conversion (4200 cents = ₹630)
   const rawSubtotalRupees = Math.round((rawSubtotalCents / 100) * 15);
 
@@ -1123,7 +1113,8 @@ export default function CartPage() {
                             </h3>
                             <p className="text-xs text-stone-500 dark:text-stone-400">
                               {formatRupees(saved.product.priceCents)}{" "}
-                              {isTileProduct(saved.product) ? "per box" : "each"} · Qty: {saved.quantity}
+                              {isTileProduct(saved.product) ? "per box" : "each"} · Qty:{" "}
+                              {saved.quantity}
                             </p>
                           </div>
                         </div>
@@ -1165,7 +1156,9 @@ export default function CartPage() {
                       ((l.quantity * l.product.priceCents) / 100) * 15
                     );
                     const isTile = isTileProduct(l.product);
-                    const qtyLabel = isTile ? `${l.quantity} ${l.quantity === 1 ? "box" : "boxes"}` : `${l.quantity}`;
+                    const qtyLabel = isTile
+                      ? `${l.quantity} ${l.quantity === 1 ? "box" : "boxes"}`
+                      : `${l.quantity}`;
 
                     return (
                       <div
@@ -1220,8 +1213,14 @@ export default function CartPage() {
                 </div>
 
                 {/* Discount Code Input */}
-                <form onSubmit={handleApplyDiscount} className="mt-4 pt-3 border-t border-[#CFDCD4]/70 dark:border-[#223832]">
-                  <label htmlFor="cart-discount-input" className="block text-xs font-semibold uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-1.5">
+                <form
+                  onSubmit={handleApplyDiscount}
+                  className="mt-4 pt-3 border-t border-[#CFDCD4]/70 dark:border-[#223832]"
+                >
+                  <label
+                    htmlFor="cart-discount-input"
+                    className="block text-xs font-semibold uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-1.5"
+                  >
                     Discount code
                   </label>
                   <div className="flex gap-2">
@@ -1262,7 +1261,9 @@ export default function CartPage() {
                     <span className="text-sm font-semibold text-stone-700 dark:text-stone-300 block">
                       Total so far
                     </span>
-                    <span className="text-[11px] text-stone-400">Excludes shipping calculation</span>
+                    <span className="text-[11px] text-stone-400">
+                      Excludes shipping calculation
+                    </span>
                   </div>
                   <span className="text-2xl font-black font-heading text-[#0D4D47] dark:text-[#2DD4BF]">
                     {formatRawRupees(totalRupees)}
@@ -1290,8 +1291,8 @@ export default function CartPage() {
                   <p className="font-semibold text-stone-800 dark:text-stone-200 mb-1 flex items-center gap-1">
                     <span>💡</span> Kiln Batch Shade Note
                   </p>
-                  Ceramic tiles naturally experience subtle tone variations between kiln firings.
-                  We recommend ordering all required boxes together in a single order to guarantee an
+                  Ceramic tiles naturally experience subtle tone variations between kiln firings. We
+                  recommend ordering all required boxes together in a single order to guarantee an
                   exact shade and glaze match.
                 </div>
               </div>

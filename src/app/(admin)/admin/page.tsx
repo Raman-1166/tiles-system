@@ -40,7 +40,8 @@ export default async function AdminDashboard() {
           <div className="rounded-2xl bg-[#F6F4EE] shadow-sm overflow-hidden">
             <div className="px-6 py-4 border-b border-stone-200 flex items-center justify-between">
               <h2 className="font-semibold text-[#14262B]">
-                Products <span className="ml-2 text-stone-400 font-normal text-sm">({products.length})</span>
+                Products{" "}
+                <span className="ml-2 text-stone-400 font-normal text-sm">({products.length})</span>
               </h2>
             </div>
 
@@ -58,10 +59,7 @@ export default async function AdminDashboard() {
                 </thead>
                 <tbody className="divide-y divide-stone-100">
                   {products.map((p) => {
-                    const totalStock = p.productVariants.reduce(
-                      (s, v) => s + v.stockQuantity,
-                      0
-                    );
+                    const totalStock = p.productVariants.reduce((s, v) => s + v.stockQuantity, 0);
                     const lowStock = totalStock > 0 && totalStock < 15;
                     const isTile = p.category?.type === "tile";
 
@@ -70,9 +68,18 @@ export default async function AdminDashboard() {
                         <td className="px-4 py-2.5">
                           <div className="h-10 w-10 overflow-hidden rounded-lg bg-stone-100 border border-stone-200 shrink-0">
                             {isTile ? (
-                              <TileImage product={p} variant="closeup" size={40} className="h-full w-full object-cover" />
+                              <TileImage
+                                product={p}
+                                variant="closeup"
+                                size={40}
+                                className="h-full w-full object-cover"
+                              />
                             ) : (
-                              <FurnitureImage product={p} size={40} className="h-full w-full object-cover" />
+                              <FurnitureImage
+                                product={p}
+                                size={40}
+                                className="h-full w-full object-cover"
+                              />
                             )}
                           </div>
                         </td>
@@ -82,7 +89,15 @@ export default async function AdminDashboard() {
                           {(p.priceCents / 100).toFixed(2)}
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <span className={lowStock ? "text-amber-600 font-medium" : totalStock === 0 ? "text-red-600 font-medium" : "text-stone-700"}>
+                          <span
+                            className={
+                              lowStock
+                                ? "text-amber-600 font-medium"
+                                : totalStock === 0
+                                  ? "text-red-600 font-medium"
+                                  : "text-stone-700"
+                            }
+                          >
                             {totalStock}
                           </span>
                         </td>
@@ -102,9 +117,7 @@ export default async function AdminDashboard() {
           </div>
         )}
 
-        <p className="mt-6 text-xs text-stone-400 text-center">
-          Full add/edit forms coming soon.
-        </p>
+        <p className="mt-6 text-xs text-stone-400 text-center">Full add/edit forms coming soon.</p>
       </div>
     </main>
   );

@@ -17,10 +17,10 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  
+
   try {
     const product = await getProductBySlug(slug);
-    
+
     if (!product) {
       return { title: "Product Not Found" };
     }
@@ -42,7 +42,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ProductPage({ params }: Props) {
   const { type, slug } = await params;
-  
+
   let product;
   try {
     product = await getProductBySlug(slug);
@@ -55,10 +55,7 @@ export default async function ProductPage({ params }: Props) {
           <p className="text-[#14262B]/70">
             Unable to load product details. Please try again later.
           </p>
-          <Link
-            href="/shop"
-            className="mt-4 inline-block text-[#0F6B6B] hover:underline"
-          >
+          <Link href="/shop" className="mt-4 inline-block text-[#0F6B6B] hover:underline">
             Back to Shop
           </Link>
         </div>
@@ -78,9 +75,10 @@ export default async function ProductPage({ params }: Props) {
   const isTile = product.category?.type === "tile";
   // The room photo is removed for tiles; never fall back to product.image
   const displayProduct = isTile ? { ...product, images: [] } : product;
-  const lowestPrice = displayProduct.productVariants.length > 0
-    ? Math.min(...displayProduct.productVariants.map((v) => v.priceCents))
-    : displayProduct.priceCents;
+  const lowestPrice =
+    displayProduct.productVariants.length > 0
+      ? Math.min(...displayProduct.productVariants.map((v) => v.priceCents))
+      : displayProduct.priceCents;
 
   // Generate JSON-LD structured data
   const jsonLd = {
@@ -141,7 +139,7 @@ export default async function ProductPage({ params }: Props) {
             <div className="rounded-lg bg-[#F6F4EE] p-6 lg:p-8">
               <h1 className="text-3xl font-bold text-[#14262B]">{product.name}</h1>
               <p className="mt-2 text-lg text-[#14262B]/70">{product.tagline}</p>
-              
+
               <p className="mt-6 text-[#14262B]">{product.description}</p>
 
               {/* Variant Selector */}
@@ -179,7 +177,13 @@ export default async function ProductPage({ params }: Props) {
                       className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#14262B] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#0F6B6B]"
                     >
                       <span>Launch in Room</span>
-                      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <svg
+                        className="h-3.5 w-3.5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                      >
                         <path d="M5 12h14M12 5l7 7-7 7" />
                       </svg>
                     </Link>
@@ -214,7 +218,10 @@ export default async function ProductPage({ params }: Props) {
                   <h3 className="text-lg font-medium text-[#14262B]">Specifications</h3>
                   <dl className="mt-4 space-y-3">
                     {Object.entries(product.specs).map(([key, value]) => (
-                      <div key={key} className="flex justify-between text-sm border-b border-[#14262B]/10 pb-2">
+                      <div
+                        key={key}
+                        className="flex justify-between text-sm border-b border-[#14262B]/10 pb-2"
+                      >
                         <dt className="text-[#14262B]/70">{key}:</dt>
                         <dd className="font-medium text-[#14262B]">{value}</dd>
                       </div>

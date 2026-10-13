@@ -119,8 +119,9 @@ test.describe("Checkout & Order Lifecycle E2E", () => {
   test("rejects order access when token is missing or invalid", async ({ request }) => {
     // Attempt to access without token
     const res = await request.get("/api/order/CLAY-FAKE1234");
-    expect(res.status()).toBe(403);
+    expect(res.status()).toBe(401);
     const body = await res.json();
-    expect(body.ok).toBe(false);
+    expect(body.error).toBeTruthy();
+    expect(body.error.code).toBe("UNAUTHORIZED");
   });
 });
