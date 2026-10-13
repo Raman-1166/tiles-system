@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600" fill="none">
+  <rect width="800" height="600" fill="#EAE6DF"/>
+  <rect x="250" y="150" width="300" height="300" rx="16" fill="#D8D2C7" stroke="#C4BCAD" stroke-width="2"/>
+  <path d="M340 330L380 280L430 340L460 300L500 350H300L340 330Z" fill="#B3ABA0"/>
+  <circle cx="360" cy="240" r="24" fill="#B3ABA0"/>
+  <text x="400" y="490" text-anchor="middle" font-family="system-ui, sans-serif" font-size="20" font-weight="500" fill="#78716C" letter-spacing="0.05em">Clay &amp; Co. Architectural Materials</text>
+</svg>

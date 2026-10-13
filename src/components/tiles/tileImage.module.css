@@ -1,0 +1,180 @@
+/*
+ * tileImage.module.css — Styles for TileImage component and 3D slab
+ */
+
+.container {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  width: 100%;
+  overflow: hidden;
+  background-color: var(--tile-bg, #c8c4bc);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+}
+
+.flatCanvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* ── 3D Slab ── */
+.scene {
+  position: absolute;
+  inset: 0;
+  perspective: 900px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.slab {
+  position: absolute;
+  inset: 17%;
+  transform-style: preserve-3d;
+  transform:
+    rotateX(calc(28deg + (var(--rx, 0) * 1deg) + (var(--drag-rx, 0) * 1deg) + (var(--sway-rx, 0) * 1deg)))
+    rotateY(calc(-32deg + (var(--ry, 0) * 1deg) + (var(--drag-ry, 0) * 1deg) + (var(--sway-ry, 0) * 1deg)));
+  transition: transform 0.15s ease-out;
+}
+
+.slabDragging {
+  transition: none !important;
+}
+
+/* Slab shadow */
+.slab::after {
+  content: "";
+  position: absolute;
+  bottom: -24px;
+  left: 10%;
+  width: 80%;
+  height: 20px;
+  background: rgba(0, 0, 0, 0.22);
+  border-radius: 50%;
+  filter: blur(8px);
+  transform: translateX(calc((var(--ry, 0) + var(--drag-ry, 0)) * 0.4px))
+             scale(calc(1 + (var(--rx, 0) + var(--drag-rx, 0)) * 0.003));
+  transition: transform 0.2s ease-out;
+}
+
+/* Front Face */
+.slabFront {
+  position: absolute;
+  inset: 0;
+  transform: translateZ(9px);
+  overflow: hidden;
+  border-radius: 2px;
+}
+
+/* Back Face */
+.slabBack {
+  position: absolute;
+  inset: 0;
+  transform: rotateY(180deg) translateZ(9px);
+  border-radius: 2px;
+}
+
+/* Side Faces with exact 18px thickness connecting +9px to -9px */
+.slabSide {
+  position: absolute;
+  transform-style: preserve-3d;
+}
+
+.slabSideTop {
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 18px;
+  transform: translateZ(9px) rotateX(90deg);
+  transform-origin: top center;
+}
+
+.slabSideBottom {
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 18px;
+  transform: translateZ(9px) rotateX(-90deg);
+  transform-origin: bottom center;
+}
+
+.slabSideLeft {
+  top: 0;
+  left: 0;
+  width: 18px;
+  height: 100%;
+  transform: translateZ(9px) rotateY(-90deg);
+  transform-origin: left center;
+}
+
+.slabSideRight {
+  top: 0;
+  right: 0;
+  width: 18px;
+  height: 100%;
+  transform: translateZ(9px) rotateY(90deg);
+  transform-origin: right center;
+}
+
+/* Glare highlight */
+.glare {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  transform: translateZ(9.2px);
+  border-radius: 2px;
+  mix-blend-mode: screen;
+  transition: opacity 0.25s ease;
+}
+
+.glareGloss {
+  opacity: 1;
+  background: radial-gradient(
+    circle at
+      calc(var(--mx, 50) * 1%)
+      calc(var(--my, 35) * 1%),
+    rgba(255, 255, 255, 0.45) 0%,
+    rgba(255, 255, 255, 0.12) 35%,
+    transparent 65%
+  );
+}
+
+.glareMatte {
+  opacity: 0;
+}
+
+/* ── Scale Overlay ── */
+.scaleOverlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 12px;
+}
+
+.scaleBadge {
+  align-self: center;
+  background: rgba(255, 255, 255, 0.92);
+  color: #14262b;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 5px 14px;
+  border-radius: 999px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+:global(.dark) .scaleBadge {
+  background: rgba(30, 28, 24, 0.92);
+  color: #f0eee8;
+  border-color: rgba(255, 255, 255, 0.1);
+}

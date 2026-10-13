@@ -1,0 +1,34 @@
+{
+  "armchair": {
+    "dimensions": {
+      "width": 82,
+      "height": 95,
+      "depth": 80
+    },
+    "sizeKb": 200
+  },
+  "coffee-table": {
+    "dimensions": {
+      "width": 110,
+      "height": 42,
+      "depth": 60
+    },
+    "sizeKb": 61
+  },
+  "floor-lamp": {
+    "dimensions": {
+      "width": 36,
+      "height": 148,
+      "depth": 36
+    },
+    "sizeKb": 16
+  },
+  "bookshelf": {
+    "dimensions": {
+      "width": 92,
+      "height": 164,
+      "depth": 34
+    },
+    "sizeKb": 61
+  }
+}

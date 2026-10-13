@@ -1,0 +1,202 @@
+/* CSS module for product page FurnitureViewer and cards */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+}
+
+.viewerWrapper {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  width: 100%;
+  border-radius: 14px;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 35%, rgba(255, 255, 255, 0.95), rgba(228, 232, 227, 0.7));
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  cursor: grab;
+  touch-action: none;
+}
+
+.viewerWrapper:active {
+  cursor: grabbing;
+}
+
+.viewerCanvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.hintBadge {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(20, 38, 43, 0.75);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  pointer-events: none;
+  backdrop-filter: blur(4px);
+  user-select: none;
+  white-space: nowrap;
+}
+
+/* Option chips */
+.chipsContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chipsLabel {
+  font-size: 13px;
+  font-weight: 600;
+  color: #14262b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.chipsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  border-radius: 9999px;
+  border: 1.5px solid rgba(20, 38, 43, 0.15);
+  background: #ffffff;
+  font-size: 13px;
+  font-weight: 500;
+  color: #14262b;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.chip:hover {
+  border-color: #0f6b6b;
+  background: #f6f4ee;
+}
+
+.chipSelected {
+  border-color: #0f6b6b;
+  background: rgba(15, 107, 107, 0.08);
+  color: #0f6b6b;
+  font-weight: 600;
+}
+
+.chipDot {
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.15);
+}
+
+/* Info Cards: Will it fit? & Details */
+.infoCard {
+  background: #f6f4ee;
+  border-radius: 14px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.infoCardTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: #14262b;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dimensionsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.dimensionBox {
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 12px;
+  text-align: center;
+  border: 1px solid rgba(20, 38, 43, 0.06);
+}
+
+.dimensionLabel {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #55696f;
+  margin-bottom: 4px;
+}
+
+.dimensionValue {
+  font-size: 16px;
+  font-weight: 700;
+  color: #14262b;
+}
+
+.detailsList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.detailsRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(20, 38, 43, 0.08);
+}
+
+.detailsRow:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.detailsTerm {
+  color: #55696f;
+}
+
+.detailsDesc {
+  font-weight: 500;
+  color: #14262b;
+}
+
+/* Ghost Button: Place in 3D room */
+.ghostBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 13px 20px;
+  border-radius: 9999px;
+  border: 1.5px solid #14262b;
+  background: transparent;
+  color: #14262b;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.ghostBtn:hover {
+  background: #14262b;
+  color: #ffffff;
+}
