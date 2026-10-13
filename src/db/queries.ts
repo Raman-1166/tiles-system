@@ -7,7 +7,7 @@ import {
   type Category,
   type ProductVariant,
 } from "@/db/schema";
-import { desc, eq, and, or, like, gte, lte, inArray } from "drizzle-orm";
+import { desc, eq, and, or, like, gte, lte, inArray, sql } from "drizzle-orm";
 
 export type { ProductVariant };
 
@@ -24,24 +24,18 @@ export type ProductFilters = {
   minPrice?: number;
   maxPrice?: number;
   material?: string;
-  colour?: string; // NEW: Filter by variant colour
-  size?: string; // NEW: Filter by variant size
+  colour?: string; // Filter by variant colour
+  size?: string; // Filter by variant size
   inStock?: boolean;
   featured?: boolean;
   isActive?: boolean;
-  sort?: "newest" | "price_asc" | "price_desc"; // NEW: Sorting
-  page?: number; // NEW: Pagination (1-indexed)
+  sort?: "newest" | "price_asc" | "price_desc"; // Sorting
+  page?: number; // Pagination (1-indexed)
   limit?: number;
   offset?: number;
 };
 
-/**
- * List products with optional filtering, sorting and pagination.
- * Returns products with their category and variants.
- */
-export async function listProducts(filters: ProductFilters = {}): Promise<ProductWithDetails[]> {
-  const { db } = getDb();
-
+function buildProductWhereClause(filters: ProductFilters) {
   const conditions = [];
 
   // Always show only active products by default
@@ -80,7 +74,30 @@ export async function listProducts(filters: ProductFilters = {}): Promise<Produc
     conditions.push(eq(products.featured, true));
   }
 
-  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+  return conditions.length > 0 ? and(...conditions) : undefined;
+}
+
+/**
+ * Count total products matching filters for pagination.
+ */
+export async function countProducts(filters: ProductFilters = {}): Promise<number> {
+  const { db } = getDb();
+  const whereClause = buildProductWhereClause(filters);
+  let q = db.select({ count: sql<number>`count(*)` }).from(products);
+  if (whereClause) {
+    q = q.where(whereClause) as typeof q;
+  }
+  const [res] = await q;
+  return Number(res?.count || 0);
+}
+
+/**
+ * List products with optional filtering, sorting and pagination.
+ * Returns products with their category and variants.
+ */
+export async function listProducts(filters: ProductFilters = {}): Promise<ProductWithDetails[]> {
+  const { db } = getDb();
+  const whereClause = buildProductWhereClause(filters);
 
   // Pagination
   const page = filters.page || 1;
@@ -89,7 +106,7 @@ export async function listProducts(filters: ProductFilters = {}): Promise<Produc
 
   // Build base query
   let baseQuery = db.select().from(products);
-  
+
   if (whereClause) {
     baseQuery = baseQuery.where(whereClause) as typeof baseQuery;
   }
@@ -113,15 +130,14 @@ export async function listProducts(filters: ProductFilters = {}): Promise<Produc
 
   // Get all product IDs and category IDs
   const productIds = productsList.map((p) => p.id);
-  const categoryIds = [...new Set(productsList.map((p) => p.categoryId).filter(Boolean))] as number[];
+  const categoryIds = [
+    ...new Set(productsList.map((p) => p.categoryId).filter(Boolean)),
+  ] as number[];
 
   // Fetch categories
   const categoriesList =
     categoryIds.length > 0
-      ? await db
-          .select()
-          .from(categories)
-          .where(inArray(categories.id, categoryIds))
+      ? await db.select().from(categories).where(inArray(categories.id, categoryIds))
       : [];
 
   const categoriesMap = new Map(categoriesList.map((c) => [c.id, c]));
@@ -154,7 +170,7 @@ export async function listProducts(filters: ProductFilters = {}): Promise<Produc
   // Apply filters that depend on variants or category type
   results = results.filter((p) => {
     const variants = p.productVariants;
-    
+
     // Filter by category type
     if (filters.type && p.category?.type !== filters.type) {
       return false;
@@ -166,16 +182,18 @@ export async function listProducts(filters: ProductFilters = {}): Promise<Produc
     }
 
     // Filter by colour
-    if (filters.colour && !variants.some((v) => 
-      v.colour?.toLowerCase().includes(filters.colour!.toLowerCase())
-    )) {
+    if (
+      filters.colour &&
+      !variants.some((v) => v.colour?.toLowerCase().includes(filters.colour!.toLowerCase()))
+    ) {
       return false;
     }
 
     // Filter by size
-    if (filters.size && !variants.some((v) => 
-      v.size?.toLowerCase().includes(filters.size!.toLowerCase())
-    )) {
+    if (
+      filters.size &&
+      !variants.some((v) => v.size?.toLowerCase().includes(filters.size!.toLowerCase()))
+    ) {
       return false;
     }
 
@@ -183,60 +201,6 @@ export async function listProducts(filters: ProductFilters = {}): Promise<Produc
   });
 
   return results;
-}
-
-/**
- * Get total count of products matching filters (for pagination).
- */
-export async function countProducts(filters: ProductFilters = {}): Promise<number> {
-  const { db } = getDb();
-  const { sql } = await import("drizzle-orm");
-
-  const conditions = [];
-
-  if (filters.isActive !== false) {
-    conditions.push(eq(products.isActive, true));
-  }
-
-  if (filters.categoryId) {
-    conditions.push(eq(products.categoryId, filters.categoryId));
-  }
-
-  if (filters.search) {
-    const searchTerm = `%${filters.search}%`;
-    conditions.push(
-      or(
-        like(products.name, searchTerm),
-        like(products.description, searchTerm),
-        like(products.material, searchTerm)
-      )
-    );
-  }
-
-  if (filters.minPrice !== undefined) {
-    conditions.push(gte(products.priceCents, filters.minPrice));
-  }
-
-  if (filters.maxPrice !== undefined) {
-    conditions.push(lte(products.priceCents, filters.maxPrice));
-  }
-
-  if (filters.material) {
-    conditions.push(like(products.material, `%${filters.material}%`));
-  }
-
-  if (filters.featured) {
-    conditions.push(eq(products.featured, true));
-  }
-
-  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
-
-  const [result] = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(products)
-    .where(whereClause);
-
-  return Number(result.count);
 }
 
 /**
@@ -252,7 +216,9 @@ export async function getProductBySlug(slug: string): Promise<ProductWithDetails
   }
 
   const category = product.categoryId
-    ? (await db.select().from(categories).where(eq(categories.id, product.categoryId)).limit(1))[0] || null
+    ? (
+        await db.select().from(categories).where(eq(categories.id, product.categoryId)).limit(1)
+      )[0] || null
     : null;
 
   const variants = await db
@@ -286,7 +252,11 @@ export async function listCategories(type?: "tile" | "furniture"): Promise<Categ
   const { db } = getDb();
 
   if (type) {
-    return db.select().from(categories).where(eq(categories.type, type)).orderBy(categories.sortOrder);
+    return db
+      .select()
+      .from(categories)
+      .where(eq(categories.type, type))
+      .orderBy(categories.sortOrder);
   }
 
   return db.select().from(categories).orderBy(categories.sortOrder);
@@ -314,7 +284,11 @@ export async function getVariantsForProduct(productId: number): Promise<ProductV
  */
 export async function getVariantBySku(sku: string): Promise<ProductVariant | null> {
   const { db } = getDb();
-  const [variant] = await db.select().from(productVariants).where(eq(productVariants.sku, sku)).limit(1);
+  const [variant] = await db
+    .select()
+    .from(productVariants)
+    .where(eq(productVariants.sku, sku))
+    .limit(1);
   return variant || null;
 }
 

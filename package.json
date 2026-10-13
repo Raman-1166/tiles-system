@@ -23,6 +23,7 @@
     "db:studio": "drizzle-kit studio",
     "db:test:setup": "node scripts/setup-test-db.mjs",
     "db:verify": "node scripts/verify-database.mjs",
+    "generate:thumbnails": "node scripts/generate-thumbnails.mjs",
     "prepare": "husky"
   },
   "lint-staged": {

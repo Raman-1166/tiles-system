@@ -1,23 +1,10 @@
 import { NextRequest } from "next/server";
-import { z } from "zod";
 import { SESSION_COOKIE } from "@/lib/session";
 import { OrderService } from "@/services/order.service";
 import { getPaymentProvider } from "@/services/payment.provider";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { jsonError, jsonSuccess, AppError, ERROR_CODES } from "@/lib/api-response";
-
-const checkoutSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
-  email: z.string().email("Valid email required"),
-  phone: z.string().optional(),
-  line1: z.string().min(3, "Address line 1 is required"),
-  line2: z.string().optional(),
-  city: z.string().min(2, "City is required"),
-  region: z.string().min(2, "State or Province is required"),
-  postalCode: z.string().min(2, "Postal code is required"),
-  country: z.string().default("US"),
-  shippingMethod: z.enum(["standard", "express", "overnight"]).default("standard"),
-});
+import { checkoutSchema } from "@/lib/checkout-schema";
 
 export async function POST(request: NextRequest) {
   try {

@@ -4,9 +4,22 @@ import { eq, and } from "drizzle-orm";
 import { AppError, ERROR_CODES } from "@/lib/api-response";
 import {
   listProducts,
+  countProducts,
   getProductBySlug as dbGetProductBySlug,
   type ProductFilters,
+  type ProductWithDetails,
 } from "@/db/queries";
+
+export type PaginatedProductsResult = {
+  products: ProductWithDetails[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasMore: boolean;
+  };
+};
 
 export class ProductService {
   /**
@@ -14,6 +27,33 @@ export class ProductService {
    */
   static async list(filters: ProductFilters = {}) {
     return listProducts(filters);
+  }
+
+  /**
+   * Get paginated products list.
+   */
+  static async listPaginated(filters: ProductFilters = {}): Promise<PaginatedProductsResult> {
+    const page = Math.max(1, Number(filters.page) || 1);
+    const limit = Math.min(100, Math.max(1, Number(filters.limit) || 12));
+
+    const [items, total] = await Promise.all([
+      listProducts({ ...filters, page, limit }),
+      countProducts(filters),
+    ]);
+
+    const totalPages = Math.ceil(total / limit) || 1;
+    const hasMore = page < totalPages;
+
+    return {
+      products: items,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasMore,
+      },
+    };
   }
 
   /**

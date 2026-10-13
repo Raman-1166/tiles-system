@@ -4,6 +4,12 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { TileImage } from "@/components/tiles/TileImage";
 import { FurnitureImage } from "@/components/furniture/FurnitureImage";
+import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
+import { Card } from "@/components/ui/Card";
+import { formatMoney } from "@/lib/money";
+import { contactSchema, addressSchema, checkoutSchema } from "@/lib/checkout-schema";
 import type { Product } from "@/db/schema";
 
 type CartLine = {
@@ -12,26 +18,11 @@ type CartLine = {
   variantId: number | null;
   quantity: number;
   variant: string | null;
-  meta?: Record<string, any> | null;
+  meta?: Record<string, unknown> | null;
   product: Product;
 };
 
-interface OrderResult {
-  orderNumber: string;
-  totalCents: number;
-  subtotalCents: number;
-  shippingCents: number;
-  taxCents: number;
-  itemCount: number;
-  createdAt: string;
-}
-
-function formatCurrency(cents: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-  }).format(cents / 100);
-}
+type Step = 1 | 2 | 3;
 
 export default function CheckoutPage() {
   const [lines, setLines] = useState<CartLine[]>([]);
@@ -39,17 +30,10 @@ export default function CheckoutPage() {
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [idempotencyKey, setIdempotencyKey] = useState<string>("");
+  const [currentStep, setCurrentStep] = useState<Step>(1);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
-  // Initialize idempotency key once per page session
-  useEffect(() => {
-    setIdempotencyKey(
-      typeof crypto !== "undefined" && crypto.randomUUID
-        ? crypto.randomUUID()
-        : `idemp_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
-    );
-  }, []);
-
-  // Form fields
+  // Form State
   const [form, setForm] = useState({
     firstName: "Alex",
     lastName: "Taylor",
@@ -61,11 +45,20 @@ export default function CheckoutPage() {
     region: "CA",
     postalCode: "94107",
     country: "US",
-    shippingMethod: "standard", // "standard" | "express"
+    shippingMethod: "standard" as "standard" | "express",
     cardNumber: "•••• •••• •••• 4242",
     cardExp: "12/28",
     cardCvc: "888",
   });
+
+  // Initialize idempotency key once per page session
+  useEffect(() => {
+    setIdempotencyKey(
+      typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `idemp_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
+    );
+  }, []);
 
   useEffect(() => {
     async function fetchCart() {
@@ -87,9 +80,82 @@ export default function CheckoutPage() {
   const taxCents = Math.round(subtotalCents * 0.08);
   const totalCents = subtotalCents + shippingCents + taxCents;
 
+  // Step 1 Validation
+  function validateStep1(): boolean {
+    const fullName = `${form.firstName} ${form.lastName}`.trim();
+    const contactRes = contactSchema.safeParse({
+      name: fullName,
+      email: form.email,
+      phone: form.phone,
+    });
+    const addressRes = addressSchema.safeParse({
+      line1: form.line1,
+      line2: form.line2,
+      city: form.city,
+      region: form.region,
+      postalCode: form.postalCode,
+      country: form.country,
+    });
+
+    const errs: Record<string, string> = {};
+    if (!contactRes.success) {
+      const fieldErrs = contactRes.error.flatten().fieldErrors;
+      if (fieldErrs.name) errs.firstName = fieldErrs.name[0];
+      if (fieldErrs.email) errs.email = fieldErrs.email[0];
+      if (fieldErrs.phone) errs.phone = fieldErrs.phone[0];
+    }
+    if (!addressRes.success) {
+      const fieldErrs = addressRes.error.flatten().fieldErrors;
+      if (fieldErrs.line1) errs.line1 = fieldErrs.line1[0];
+      if (fieldErrs.city) errs.city = fieldErrs.city[0];
+      if (fieldErrs.region) errs.region = fieldErrs.region[0];
+      if (fieldErrs.postalCode) errs.postalCode = fieldErrs.postalCode[0];
+      if (fieldErrs.country) errs.country = fieldErrs.country[0];
+    }
+
+    setFieldErrors(errs);
+    return Object.keys(errs).length === 0;
+  }
+
+  function handleContinueToShipping(e: React.FormEvent) {
+    e.preventDefault();
+    if (validateStep1()) {
+      setCurrentStep(2);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }
+
+  function handleContinueToPayment(e: React.FormEvent) {
+    e.preventDefault();
+    setCurrentStep(3);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (submitting) return; // Prevent double submit
+    if (submitting) return;
+
+    // Full validation
+    const fullName = `${form.firstName} ${form.lastName}`.trim();
+    const parsed = checkoutSchema.safeParse({
+      name: fullName,
+      email: form.email,
+      phone: form.phone,
+      line1: form.line1,
+      line2: form.line2,
+      city: form.city,
+      region: form.region,
+      postalCode: form.postalCode,
+      country: form.country,
+      shippingMethod: form.shippingMethod,
+    });
+
+    if (!parsed.success) {
+      setErrorMessage("Please complete all required fields correctly before submitting.");
+      setCurrentStep(1);
+      return;
+    }
+
     setSubmitting(true);
     setErrorMessage(null);
 
@@ -101,7 +167,7 @@ export default function CheckoutPage() {
           "Idempotency-Key": idempotencyKey,
         },
         body: JSON.stringify({
-          name: `${form.firstName} ${form.lastName}`.trim(),
+          name: fullName,
           email: form.email,
           phone: form.phone,
           line1: form.line1,
@@ -136,7 +202,7 @@ export default function CheckoutPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-[#E4E8E3] flex items-center justify-center">
+      <main className="min-h-screen bg-[#faf7f0] flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-stone-800 border-t-transparent" />
           <p className="text-stone-600 text-sm font-medium">Preparing checkout…</p>
@@ -148,28 +214,31 @@ export default function CheckoutPage() {
   // Empty cart view
   if (lines.length === 0) {
     return (
-      <main className="min-h-screen bg-[#E4E8E3] flex items-center justify-center p-6">
-        <div className="rounded-3xl bg-[#F6F4EE] p-12 text-center shadow-sm max-w-md border border-stone-200">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-stone-200/80 text-stone-600">
+      <main className="min-h-screen bg-[#faf7f0] flex items-center justify-center p-6">
+        <div className="rounded-3xl bg-white p-12 text-center shadow-sm max-w-md border border-stone-200">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-stone-100 text-stone-600">
             <svg
+              aria-hidden="true"
               className="h-6 w-6"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
               strokeWidth="2"
             >
-              <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4zM3 6h18M16 10a4 4 0 0 1-8 0" />
+              <circle cx="9" cy="21" r="1" />
+              <circle cx="20" cy="21" r="1" />
+              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-[#14262B] mb-2">Your cart is empty</h1>
-          <p className="text-stone-500 text-sm mb-6">
-            Add items from our tile or furniture collections before checking out.
+          <h2 className="text-2xl font-serif font-light text-stone-900 mb-2">Your Bag is Empty</h2>
+          <p className="text-sm text-stone-600 mb-6 leading-relaxed">
+            There are no architectural tiles or furniture pieces in your cart to checkout.
           </p>
           <Link
             href="/shop"
-            className="inline-block rounded-full bg-[#14262B] px-6 py-3 text-sm font-semibold text-white hover:bg-stone-700 transition"
+            className="inline-block rounded-full bg-stone-900 px-6 py-3 text-sm font-semibold text-white hover:bg-stone-700 transition"
           >
-            Browse Products →
+            Browse Collections →
           </Link>
         </div>
       </main>
@@ -177,428 +246,514 @@ export default function CheckoutPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#E4E8E3] py-12 px-4 sm:px-6 lg:px-8">
+    <main className="min-h-screen bg-[#faf7f0] py-12 px-4 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-6xl">
-        {/* Breadcrumb Header */}
-        <div className="mb-8 flex items-center justify-between">
+        {/* Header & Back Link */}
+        <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <nav className="mb-2 flex items-center gap-2 text-xs font-medium text-stone-500">
-              <Link href="/cart" className="hover:text-stone-900 transition">
-                ← Back to Cart
-              </Link>
-            </nav>
-            <h1 className="text-3xl sm:text-4xl font-bold text-[#14262B] tracking-tight">
+            <Link
+              href="/cart"
+              className="text-xs font-semibold uppercase tracking-wider text-stone-500 hover:text-stone-900 transition flex items-center gap-1 mb-2"
+            >
+              ← Return to Bag
+            </Link>
+            <h1 className="font-serif text-3xl sm:text-4xl font-light text-stone-900 tracking-tight">
               Express Checkout
             </h1>
           </div>
-          <div className="hidden sm:flex items-center gap-2 rounded-full bg-stone-900/5 px-3 py-1.5 text-xs text-stone-600">
+          <div className="flex items-center gap-2 self-start sm:self-auto rounded-full border border-stone-200 bg-white px-3.5 py-1.5 text-xs text-stone-700 shadow-2xs">
             <span className="h-2 w-2 rounded-full bg-emerald-500" />
-            256-bit Encrypted Checkout
+            <span>256-bit PCI-DSS Encrypted</span>
           </div>
         </div>
 
-        <div className="grid gap-8 lg:grid-cols-12 items-start">
-          {/* Left Form Column (7 cols) */}
-          <form onSubmit={handleSubmit} className="lg:col-span-7 space-y-6">
-            {errorMessage && (
-              <div className="rounded-xl bg-red-100 border border-red-300 p-4 text-sm text-red-800 font-medium">
-                {errorMessage}
-              </div>
-            )}
-            {/* Contact Details */}
-            <div className="rounded-2xl bg-[#F6F4EE] p-6 sm:p-7 shadow-sm border border-stone-200/80">
-              <h2 className="text-lg font-bold text-[#14262B] mb-4 flex items-center gap-2">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#14262B] text-white text-xs font-bold">
-                  1
-                </span>
-                Contact Information
-              </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-stone-700 uppercase tracking-wider mb-1">
-                    First Name
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={form.firstName}
-                    onChange={(e) => setForm({ ...form, firstName: e.target.value })}
-                    className="w-full rounded-xl border border-stone-300 bg-white px-3.5 py-2.5 text-sm text-[#14262B] shadow-sm focus:border-[#0F6B6B] focus:outline-none focus:ring-1 focus:ring-[#0F6B6B]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-stone-700 uppercase tracking-wider mb-1">
-                    Last Name
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={form.lastName}
-                    onChange={(e) => setForm({ ...form, lastName: e.target.value })}
-                    className="w-full rounded-xl border border-stone-300 bg-white px-3.5 py-2.5 text-sm text-[#14262B] shadow-sm focus:border-[#0F6B6B] focus:outline-none focus:ring-1 focus:ring-[#0F6B6B]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-stone-700 uppercase tracking-wider mb-1">
-                    Email Address
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    value={form.email}
-                    onChange={(e) => setForm({ ...form, email: e.target.value })}
-                    className="w-full rounded-xl border border-stone-300 bg-white px-3.5 py-2.5 text-sm text-[#14262B] shadow-sm focus:border-[#0F6B6B] focus:outline-none focus:ring-1 focus:ring-[#0F6B6B]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-stone-700 uppercase tracking-wider mb-1">
-                    Phone Number
-                  </label>
-                  <input
-                    type="tel"
-                    required
-                    value={form.phone}
-                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                    className="w-full rounded-xl border border-stone-300 bg-white px-3.5 py-2.5 text-sm text-[#14262B] shadow-sm focus:border-[#0F6B6B] focus:outline-none focus:ring-1 focus:ring-[#0F6B6B]"
-                  />
-                </div>
-              </div>
-            </div>
+        {/* Stepper Navigation */}
+        <nav aria-label="Checkout Progress" className="mb-10">
+          <ol className="flex items-center gap-2 sm:gap-4 max-w-2xl">
+            {[
+              { num: 1, label: "Delivery Address" },
+              { num: 2, label: "Freight Method" },
+              { num: 3, label: "Review & Pay" },
+            ].map((step, idx) => {
+              const isCurrent = currentStep === step.num;
+              const isPast = currentStep > step.num;
+              return (
+                <li key={step.num} className="flex-1 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (isPast) setCurrentStep(step.num as Step);
+                    }}
+                    disabled={!isPast && !isCurrent}
+                    className={`flex items-center gap-2 text-xs font-medium transition ${
+                      isCurrent
+                        ? "text-stone-900 font-bold"
+                        : isPast
+                          ? "text-stone-700 hover:text-stone-900 cursor-pointer"
+                          : "text-stone-400 cursor-not-allowed"
+                    }`}
+                  >
+                    <span
+                      className={`flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold ${
+                        isCurrent
+                          ? "bg-stone-900 text-white"
+                          : isPast
+                            ? "bg-emerald-600 text-white"
+                            : "bg-stone-200 text-stone-500"
+                      }`}
+                    >
+                      {isPast ? "✓" : step.num}
+                    </span>
+                    <span className="hidden sm:inline">{step.label}</span>
+                  </button>
+                  {idx < 2 && <div className="h-px flex-1 bg-stone-200" />}
+                </li>
+              );
+            })}
+          </ol>
+        </nav>
 
-            {/* Shipping Address */}
-            <div className="rounded-2xl bg-[#F6F4EE] p-6 sm:p-7 shadow-sm border border-stone-200/80">
-              <h2 className="text-lg font-bold text-[#14262B] mb-4 flex items-center gap-2">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#14262B] text-white text-xs font-bold">
-                  2
-                </span>
-                Shipping Address
-              </h2>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold text-stone-700 uppercase tracking-wider mb-1">
-                    Street Address
-                  </label>
-                  <input
-                    type="text"
+        {/* Global Error Banner */}
+        {errorMessage && (
+          <div
+            role="alert"
+            className="mb-8 rounded-xl bg-red-50 border border-red-200 p-4 text-sm text-red-800 font-medium"
+          >
+            {errorMessage}
+          </div>
+        )}
+
+        <div className="grid gap-10 lg:grid-cols-12 items-start">
+          {/* Left Column: Multi-step Form Content (7 cols) */}
+          <div className="lg:col-span-7 space-y-6">
+            {/* STEP 1: Delivery Address & Contact */}
+            {currentStep === 1 && (
+              <form onSubmit={handleContinueToShipping} noValidate className="space-y-6">
+                <Card className="p-6 sm:p-8 space-y-6">
+                  <div>
+                    <h2 className="font-serif text-xl font-medium text-stone-900">
+                      1. Contact &amp; Delivery Destination
+                    </h2>
+                    <p className="mt-1 text-xs text-stone-500">
+                      Where should our freight carrier dispatch your pallet or parcel?
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <Input
+                      id="checkout-firstName"
+                      label="First Name *"
+                      required
+                      value={form.firstName}
+                      error={fieldErrors.firstName}
+                      onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+                    />
+                    <Input
+                      id="checkout-lastName"
+                      label="Last Name *"
+                      required
+                      value={form.lastName}
+                      onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <Input
+                      id="checkout-email"
+                      type="email"
+                      label="Email Address (for order receipts &amp; freight tracking) *"
+                      required
+                      value={form.email}
+                      error={fieldErrors.email}
+                      onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    />
+                    <Input
+                      id="checkout-phone"
+                      type="tel"
+                      label="Phone Number (for driver delivery appointment) *"
+                      required
+                      value={form.phone}
+                      error={fieldErrors.phone}
+                      onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                    />
+                  </div>
+
+                  <Input
+                    id="checkout-line1"
+                    label="Street Address *"
                     required
+                    placeholder="123 Artisan Way"
                     value={form.line1}
+                    error={fieldErrors.line1}
                     onChange={(e) => setForm({ ...form, line1: e.target.value })}
-                    placeholder="123 Main St"
-                    className="w-full rounded-xl border border-stone-300 bg-white px-3.5 py-2.5 text-sm text-[#14262B] shadow-sm focus:border-[#0F6B6B] focus:outline-none focus:ring-1 focus:ring-[#0F6B6B]"
                   />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-stone-700 uppercase tracking-wider mb-1">
-                    Apartment, Suite, Unit (Optional)
-                  </label>
-                  <input
-                    type="text"
+
+                  <Input
+                    id="checkout-line2"
+                    label="Apartment, Suite, Unit, or Gate Code (Optional)"
+                    placeholder="Suite 4B / Loading Dock A"
                     value={form.line2}
                     onChange={(e) => setForm({ ...form, line2: e.target.value })}
-                    placeholder="Apt 4B"
-                    className="w-full rounded-xl border border-stone-300 bg-white px-3.5 py-2.5 text-sm text-[#14262B] shadow-sm focus:border-[#0F6B6B] focus:outline-none focus:ring-1 focus:ring-[#0F6B6B]"
                   />
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-stone-700 uppercase tracking-wider mb-1">
-                      City
-                    </label>
-                    <input
-                      type="text"
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <Input
+                      id="checkout-city"
+                      label="City *"
                       required
                       value={form.city}
+                      error={fieldErrors.city}
                       onChange={(e) => setForm({ ...form, city: e.target.value })}
-                      className="w-full rounded-xl border border-stone-300 bg-white px-3.5 py-2.5 text-sm text-[#14262B] shadow-sm focus:border-[#0F6B6B] focus:outline-none focus:ring-1 focus:ring-[#0F6B6B]"
                     />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-stone-700 uppercase tracking-wider mb-1">
-                      State / Province
-                    </label>
-                    <input
-                      type="text"
+                    <Input
+                      id="checkout-region"
+                      label="State / Province *"
                       required
                       value={form.region}
+                      error={fieldErrors.region}
                       onChange={(e) => setForm({ ...form, region: e.target.value })}
-                      className="w-full rounded-xl border border-stone-300 bg-white px-3.5 py-2.5 text-sm text-[#14262B] shadow-sm focus:border-[#0F6B6B] focus:outline-none focus:ring-1 focus:ring-[#0F6B6B]"
                     />
-                  </div>
-                  <div className="col-span-2 sm:col-span-1">
-                    <label className="block text-xs font-semibold text-stone-700 uppercase tracking-wider mb-1">
-                      Postal Code
-                    </label>
-                    <input
-                      type="text"
+                    <Input
+                      id="checkout-postalCode"
+                      label="Postal / ZIP Code *"
                       required
                       value={form.postalCode}
+                      error={fieldErrors.postalCode}
                       onChange={(e) => setForm({ ...form, postalCode: e.target.value })}
-                      className="w-full rounded-xl border border-stone-300 bg-white px-3.5 py-2.5 text-sm text-[#14262B] shadow-sm focus:border-[#0F6B6B] focus:outline-none focus:ring-1 focus:ring-[#0F6B6B]"
                     />
                   </div>
-                </div>
-              </div>
-            </div>
 
-            {/* Delivery Method */}
-            <div className="rounded-2xl bg-[#F6F4EE] p-6 sm:p-7 shadow-sm border border-stone-200/80">
-              <h2 className="text-lg font-bold text-[#14262B] mb-4 flex items-center gap-2">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#14262B] text-white text-xs font-bold">
-                  3
-                </span>
-                Delivery Method
-              </h2>
-              <div className="space-y-3">
-                <label
-                  className={`flex cursor-pointer items-center justify-between rounded-xl border p-4 transition ${
-                    form.shippingMethod === "standard"
-                      ? "border-[#14262B] bg-white ring-1 ring-[#14262B]"
-                      : "border-stone-300 bg-white/60 hover:bg-white"
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="radio"
-                      name="shipping"
-                      checked={form.shippingMethod === "standard"}
-                      onChange={() => setForm({ ...form, shippingMethod: "standard" })}
-                      className="accent-[#14262B]"
-                    />
-                    <div>
-                      <p className="text-sm font-semibold text-[#14262B]">
-                        Standard Fragile Freight
-                      </p>
-                      <p className="text-xs text-stone-500">
-                        Delivered carefully in 3–5 business days
-                      </p>
-                    </div>
-                  </div>
-                  <span className="text-sm font-bold text-emerald-700">FREE</span>
-                </label>
-
-                <label
-                  className={`flex cursor-pointer items-center justify-between rounded-xl border p-4 transition ${
-                    form.shippingMethod === "express"
-                      ? "border-[#14262B] bg-white ring-1 ring-[#14262B]"
-                      : "border-stone-300 bg-white/60 hover:bg-white"
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="radio"
-                      name="shipping"
-                      checked={form.shippingMethod === "express"}
-                      onChange={() => setForm({ ...form, shippingMethod: "express" })}
-                      className="accent-[#14262B]"
-                    />
-                    <div>
-                      <p className="text-sm font-semibold text-[#14262B]">
-                        Express Architectural Priority
-                      </p>
-                      <p className="text-xs text-stone-500">
-                        Scheduled 1–2 business day liftgate delivery
-                      </p>
-                    </div>
-                  </div>
-                  <span className="text-sm font-semibold text-stone-800">$25.00</span>
-                </label>
-              </div>
-            </div>
-
-            {/* Payment Details */}
-            <div className="rounded-2xl bg-[#F6F4EE] p-6 sm:p-7 shadow-sm border border-stone-200/80">
-              <h2 className="text-lg font-bold text-[#14262B] mb-4 flex items-center gap-2">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#14262B] text-white text-xs font-bold">
-                  4
-                </span>
-                Payment
-              </h2>
-              <div className="rounded-xl border border-stone-200 bg-white p-4 space-y-3">
-                <div>
-                  <label className="block text-xs font-semibold text-stone-700 uppercase tracking-wider mb-1">
-                    Card Number
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={form.cardNumber}
-                    onChange={(e) => setForm({ ...form, cardNumber: e.target.value })}
-                    className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-[#14262B] focus:border-[#0F6B6B] focus:outline-none"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-stone-700 uppercase tracking-wider mb-1">
-                      Expiration Date
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={form.cardExp}
-                      onChange={(e) => setForm({ ...form, cardExp: e.target.value })}
-                      placeholder="MM/YY"
-                      className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-[#14262B] focus:border-[#0F6B6B] focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-stone-700 uppercase tracking-wider mb-1">
-                      Security Code (CVC)
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={form.cardCvc}
-                      onChange={(e) => setForm({ ...form, cardCvc: e.target.value })}
-                      placeholder="CVC"
-                      className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm text-[#14262B] focus:border-[#0F6B6B] focus:outline-none"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={submitting}
-                className="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-[#14262B] py-4 text-base font-semibold text-white shadow-md transition hover:bg-[#0F6B6B] hover:shadow-lg disabled:opacity-60"
-              >
-                {submitting ? (
-                  <>
-                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                    <span>Processing Secure Order…</span>
-                  </>
-                ) : (
-                  <>
-                    <span>Place Order · {formatCurrency(totalCents)}</span>
-                    <svg
-                      className="h-4 w-4"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2.5"
+                    <label
+                      htmlFor="checkout-country"
+                      className="block text-xs font-semibold uppercase tracking-wider text-stone-700 mb-1.5"
                     >
-                      <path d="M5 12h14M12 5l7 7-7 7" />
-                    </svg>
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
+                      Country
+                    </label>
+                    <select
+                      id="checkout-country"
+                      value={form.country}
+                      onChange={(e) => setForm({ ...form, country: e.target.value })}
+                      className="w-full rounded-md border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900 shadow-sm focus:border-stone-900 focus:outline-none focus:ring-1 focus:ring-stone-900"
+                    >
+                      <option value="US">United States (Domestic Pallet Freight)</option>
+                      <option value="UK">United Kingdom (Studio Origin Freight)</option>
+                      <option value="CA">Canada (Cross-Border Liftgate Freight)</option>
+                      <option value="EU">European Union (Direct Express Freight)</option>
+                    </select>
+                  </div>
 
-          {/* Right Summary Column (5 cols) */}
-          <div className="lg:col-span-5 space-y-6 lg:sticky lg:top-8">
-            <div className="rounded-2xl bg-[#F6F4EE] p-6 sm:p-7 shadow-sm border border-stone-200/80">
-              <h2 className="text-lg font-bold text-[#14262B] mb-4">
-                Order Summary ({lines.length} {lines.length === 1 ? "item" : "items"})
-              </h2>
+                  <div className="pt-4 flex justify-end">
+                    <Button type="submit" variant="primary" size="lg" className="w-full sm:w-auto">
+                      Continue to Shipping Method →
+                    </Button>
+                  </div>
+                </Card>
+              </form>
+            )}
+
+            {/* STEP 2: Shipping Method Selection */}
+            {currentStep === 2 && (
+              <form onSubmit={handleContinueToPayment} className="space-y-6">
+                <Card className="p-6 sm:p-8 space-y-6">
+                  <div>
+                    <h2 className="font-serif text-xl font-medium text-stone-900">
+                      2. Pallet Shipping &amp; Freight Method
+                    </h2>
+                    <p className="mt-1 text-xs text-stone-500">
+                      Select your preferred delivery tier for heavy ceramic freight.
+                    </p>
+                  </div>
+
+                  {/* Shipping Options */}
+                  <div className="space-y-4">
+                    <label
+                      className={`flex cursor-pointer items-start justify-between rounded-xl border p-5 transition ${
+                        form.shippingMethod === "standard"
+                          ? "border-stone-900 bg-stone-50/70 ring-1 ring-stone-900"
+                          : "border-stone-200 bg-white hover:border-stone-300"
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <input
+                          type="radio"
+                          name="shippingMethod"
+                          value="standard"
+                          checked={form.shippingMethod === "standard"}
+                          onChange={() => setForm({ ...form, shippingMethod: "standard" })}
+                          className="mt-1 text-stone-900 focus:ring-stone-900"
+                        />
+                        <div>
+                          <p className="text-sm font-semibold text-stone-900">
+                            Standard Pallet Freight (Curbside Liftgate)
+                          </p>
+                          <p className="mt-1 text-xs text-stone-500 leading-relaxed">
+                            Banded timber pallet delivery lowered to your driveway or curbside.
+                            Driver coordinates appointment by phone 24 hours prior. (4–7 business
+                            days).
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-xs font-semibold uppercase tracking-wider text-emerald-700">
+                        Included
+                      </span>
+                    </label>
+
+                    <label
+                      className={`flex cursor-pointer items-start justify-between rounded-xl border p-5 transition ${
+                        form.shippingMethod === "express"
+                          ? "border-stone-900 bg-stone-50/70 ring-1 ring-stone-900"
+                          : "border-stone-200 bg-white hover:border-stone-300"
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <input
+                          type="radio"
+                          name="shippingMethod"
+                          value="express"
+                          checked={form.shippingMethod === "express"}
+                          onChange={() => setForm({ ...form, shippingMethod: "express" })}
+                          className="mt-1 text-stone-900 focus:ring-stone-900"
+                        />
+                        <div>
+                          <p className="text-sm font-semibold text-stone-900">
+                            Express Freight Dispatch &amp; Priority Transit
+                          </p>
+                          <p className="mt-1 text-xs text-stone-500 leading-relaxed">
+                            Immediate same-day kiln pallet staging, priority freight routing, and
+                            expedited 2–3 business day transit window.
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-sm font-bold text-stone-900">+$25.00</span>
+                    </label>
+                  </div>
+
+                  <div className="pt-4 flex items-center justify-between gap-4">
+                    <Button type="button" variant="outline" onClick={() => setCurrentStep(1)}>
+                      ← Back to Address
+                    </Button>
+                    <Button type="submit" variant="primary" size="lg">
+                      Continue to Review &amp; Payment →
+                    </Button>
+                  </div>
+                </Card>
+              </form>
+            )}
+
+            {/* STEP 3: Review & Payment Confirmation */}
+            {currentStep === 3 && (
+              <form onSubmit={handleSubmit} className="space-y-6">
+                {/* Review Details Card */}
+                <Card className="p-6 sm:p-8 space-y-6">
+                  <div className="flex items-center justify-between border-b border-stone-200 pb-4">
+                    <div>
+                      <h2 className="font-serif text-xl font-medium text-stone-900">
+                        3. Order Review &amp; Secure Payment
+                      </h2>
+                      <p className="text-xs text-stone-500">
+                        Review your shipping details before authorizing payment.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Summary of Steps 1 & 2 */}
+                  <div className="grid gap-4 sm:grid-cols-2 text-xs">
+                    <div className="rounded-xl border border-stone-200 bg-[#faf7f0] p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-semibold uppercase tracking-wider text-stone-600">
+                          Ship To:
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setCurrentStep(1)}
+                          className="text-stone-700 underline font-semibold hover:text-stone-950"
+                        >
+                          Edit
+                        </button>
+                      </div>
+                      <p className="font-bold text-stone-900">
+                        {form.firstName} {form.lastName}
+                      </p>
+                      <p className="text-stone-600">
+                        {form.line1} {form.line2}
+                      </p>
+                      <p className="text-stone-600">
+                        {form.city}, {form.region} {form.postalCode}
+                      </p>
+                      <p className="text-stone-600">
+                        {form.email} • {form.phone}
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl border border-stone-200 bg-[#faf7f0] p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-semibold uppercase tracking-wider text-stone-600">
+                          Freight Method:
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setCurrentStep(2)}
+                          className="text-stone-700 underline font-semibold hover:text-stone-950"
+                        >
+                          Edit
+                        </button>
+                      </div>
+                      <p className="font-bold text-stone-900">
+                        {form.shippingMethod === "express"
+                          ? "Express Freight Dispatch (+$25.00)"
+                          : "Standard Curbside Pallet Freight (Included)"}
+                      </p>
+                      <p className="mt-1 text-stone-500">
+                        Liftgate curbside delivery with appointment call.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Payment Method Details */}
+                  <div className="pt-2 space-y-4">
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-stone-900">
+                      Payment Method
+                    </h3>
+                    <div className="rounded-xl border border-stone-300 bg-white p-5 shadow-2xs space-y-4">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-semibold text-stone-900 flex items-center gap-2">
+                          <svg
+                            aria-hidden="true"
+                            className="h-5 w-5 text-stone-700"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <rect x="2" y="5" width="20" height="14" rx="2" strokeWidth="1.5" />
+                            <path d="M2 10h20" strokeWidth="1.5" />
+                          </svg>
+                          Credit / Debit Card (Stripe Encrypted)
+                        </span>
+                        <Badge variant="success">Stripe Verified</Badge>
+                      </div>
+
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <Input
+                          id="checkout-cardNumber"
+                          label="Card Number"
+                          value={form.cardNumber}
+                          onChange={(e) => setForm({ ...form, cardNumber: e.target.value })}
+                        />
+                        <div className="grid grid-cols-2 gap-2">
+                          <Input
+                            id="checkout-cardExp"
+                            label="Expires"
+                            value={form.cardExp}
+                            onChange={(e) => setForm({ ...form, cardExp: e.target.value })}
+                          />
+                          <Input
+                            id="checkout-cardCvc"
+                            label="CVC"
+                            value={form.cardCvc}
+                            onChange={(e) => setForm({ ...form, cardCvc: e.target.value })}
+                          />
+                        </div>
+                      </div>
+
+                      <p className="text-[11px] text-stone-500">
+                        🔒 Sensitive card data is tokenized directly via Stripe Elements. Your full
+                        card number is never stored on Clay &amp; Co. servers.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 flex items-center justify-between gap-4">
+                    <Button type="button" variant="outline" onClick={() => setCurrentStep(2)}>
+                      ← Back to Shipping
+                    </Button>
+                    <Button
+                      type="submit"
+                      variant="primary"
+                      size="lg"
+                      isLoading={submitting}
+                      className="w-full sm:w-auto text-base"
+                    >
+                      {submitting
+                        ? "Processing Order…"
+                        : `Complete Order • ${formatMoney(totalCents)}`}
+                    </Button>
+                  </div>
+                </Card>
+              </form>
+            )}
+          </div>
+
+          {/* Right Column: Order Summary (5 cols) */}
+          <aside className="lg:col-span-5 sticky top-24">
+            <Card className="p-6 sm:p-7 space-y-6">
+              <div className="flex items-center justify-between border-b border-stone-200 pb-4">
+                <h2 className="font-serif text-lg font-medium text-stone-900">Order Summary</h2>
+                <span className="text-xs font-semibold text-stone-500">
+                  {lines.length} {lines.length === 1 ? "Item" : "Items"}
+                </span>
+              </div>
 
               {/* Items List */}
-              <div className="divide-y divide-stone-200/80 max-h-[380px] overflow-y-auto pr-1 space-y-3">
-                {lines.map((line) => {
-                  const isTile = Boolean(
-                    line.product.tileSizeCm ||
-                    line.product.visualizerColor ||
-                    line.product.pattern ||
-                    line.product.tileType ||
-                    line.product.groutColor ||
-                    line.product.tileLayout
-                  );
-
-                  return (
-                    <div key={line.id} className="pt-3 first:pt-0 flex gap-3.5 items-start">
-                      <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-white border border-stone-200 shadow-xs">
-                        {isTile ? (
-                          <TileImage
-                            product={line.product}
-                            variant="closeup"
-                            size={64}
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          <FurnitureImage
-                            product={line.product}
-                            colour={line.variant || undefined}
-                            size={64}
-                            className="h-full w-full object-cover"
-                          />
-                        )}
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-[#14262B] leading-tight truncate">
-                          {line.product.name}
-                        </p>
-                        <p className="text-xs text-stone-500 mt-0.5">
-                          Qty: {line.quantity} · {formatCurrency(line.product.priceCents)} ea
-                        </p>
-
-                        {/* Visualizer customization chips */}
-                        {line.meta && (
-                          <div className="mt-1 flex flex-wrap gap-1 text-[10px]">
-                            {line.meta.room && (
-                              <span className="rounded bg-[#E4E8E3] px-1.5 py-0.5 text-[#14262B] capitalize">
-                                {String(line.meta.room)}
-                              </span>
-                            )}
-                            {line.meta.layout && (
-                              <span className="rounded bg-[#E4E8E3] px-1.5 py-0.5 text-[#14262B] capitalize">
-                                {String(line.meta.layout)}
-                              </span>
-                            )}
-                            {line.meta.grout && (
-                              <span className="inline-flex items-center gap-1 rounded bg-[#E4E8E3] px-1.5 py-0.5 text-[#14262B]">
-                                <span
-                                  className="h-2 w-2 rounded-full border border-black/20"
-                                  style={{ backgroundColor: String(line.meta.grout) }}
-                                />
-                                Grout
-                              </span>
-                            )}
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="text-right font-medium text-sm text-[#14262B] shrink-0">
-                        {formatCurrency(line.quantity * line.product.priceCents)}
-                      </div>
+              <div className="space-y-4 max-h-80 overflow-y-auto pr-1 divide-y divide-stone-100">
+                {lines.map((l) => (
+                  <div
+                    key={l.id}
+                    className="pt-3 first:pt-0 flex gap-3 items-center justify-between text-xs"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-stone-900 truncate">{l.product.name}</p>
+                      {l.variant && (
+                        <p className="text-[11px] text-stone-500">Finish: {l.variant}</p>
+                      )}
+                      <p className="text-[11px] text-stone-500">
+                        Qty: {l.quantity} {l.product.soldBy === "box" ? "boxes" : "units"}
+                      </p>
                     </div>
-                  );
-                })}
+                    <span className="font-bold text-stone-900 shrink-0">
+                      {formatMoney(l.quantity * l.product.priceCents)}
+                    </span>
+                  </div>
+                ))}
               </div>
 
               {/* Price Breakdown */}
-              <div className="mt-6 border-t border-stone-200 pt-4 space-y-2 text-sm text-stone-600">
-                <div className="flex justify-between">
+              <div className="space-y-2.5 border-t border-stone-200 pt-4 text-xs">
+                <div className="flex justify-between text-stone-600">
                   <span>Subtotal</span>
-                  <span className="font-medium text-[#14262B]">
-                    {formatCurrency(subtotalCents)}
+                  <span className="font-medium text-stone-900">{formatMoney(subtotalCents)}</span>
+                </div>
+                <div className="flex justify-between text-stone-600">
+                  <span>Pallet Freight Shipping</span>
+                  <span className="font-medium text-stone-900">
+                    {shippingCents === 0 ? "Included" : formatMoney(shippingCents)}
                   </span>
                 </div>
-                <div className="flex justify-between">
-                  <span>Shipping</span>
-                  <span className="font-medium text-[#14262B]">
-                    {shippingCents === 0 ? "FREE" : formatCurrency(shippingCents)}
+                <div className="flex justify-between text-stone-600">
+                  <span>Estimated Tax (8%)</span>
+                  <span className="font-medium text-stone-900">{formatMoney(taxCents)}</span>
+                </div>
+
+                <div className="flex items-baseline justify-between border-t border-stone-200 pt-3 text-base">
+                  <span className="font-serif font-medium text-stone-900">Total</span>
+                  <span className="font-serif text-2xl font-bold text-stone-900">
+                    {formatMoney(totalCents)}
                   </span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Estimated Tax</span>
-                  <span className="font-medium text-[#14262B]">{formatCurrency(taxCents)}</span>
-                </div>
-                <div className="border-t border-stone-200 pt-3 flex justify-between text-base font-bold text-[#14262B]">
-                  <span>Total</span>
-                  <span>{formatCurrency(totalCents)}</span>
                 </div>
               </div>
-            </div>
 
-            {/* Satisfaction Guarantee card */}
-            <div className="rounded-2xl border border-stone-200 bg-white/70 p-4 text-xs text-stone-600 space-y-1.5 backdrop-blur-sm">
-              <p className="font-semibold text-[#14262B]">🏺 Clay &amp; Co. Guarantee</p>
-              <p>
-                Every ceramic batch is kiln-inspected and cushioned in 100% recyclable molded fiber.
-                Free 30-day returns on all catalog finishes.
-              </p>
-            </div>
-          </div>
+              {/* Batch Guarantee Notice */}
+              <div className="rounded-xl border border-stone-200 bg-[#faf7f0] p-4 text-[11px] text-stone-600 leading-relaxed space-y-1">
+                <p className="font-bold text-stone-800 flex items-center gap-1.5">
+                  <span>🏺</span> Single Kiln Run Guarantee
+                </p>
+                <p>
+                  Every order is packed from a single continuous firing lot to preserve consistent
+                  glaze pooling and dimensional caliber.
+                </p>
+              </div>
+            </Card>
+          </aside>
         </div>
       </div>
     </main>

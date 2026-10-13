@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, useId } from "react";
 import Link from "next/link";
 import { useCartStore } from "@/store/cartStore";
+import { formatMoney } from "@/lib/money";
 import type { Product } from "@/db/schema";
 
 export type CartLine = {
@@ -26,23 +27,13 @@ export type SavedCartItem = {
   savedAt: number;
 };
 
-// ── Currency Formatter (Indian Grouping) ──────────────────────────────────────
-// Converts cents to rupees using project rate (1 USD cent = ₹0.15, e.g. 4200 cents = ₹630)
+// ── Currency Formatter ────────────────────────────────────────────────────────
 export function formatRupees(cents: number): string {
-  const rupees = Math.round((cents / 100) * 15);
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 0,
-  }).format(rupees);
+  return formatMoney(cents);
 }
 
-export function formatRawRupees(rupees: number): string {
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 0,
-  }).format(Math.max(0, Math.round(rupees)));
+export function formatRawRupees(cents: number): string {
+  return formatMoney(cents);
 }
 
 // ── Helper to detect tile products ───────────────────────────────────────────
@@ -833,13 +824,13 @@ export default function CartPage() {
       return;
     }
 
-    if (clean === "CLAY10") {
+    if (clean === "CLAY10" || clean === "WELCOME10") {
       setAppliedDiscount({ code: clean, percent: 10 });
       setDiscountCode("");
     } else if (clean === "STUDIO15") {
       setAppliedDiscount({ code: clean, percent: 15 });
       setDiscountCode("");
-    } else if (clean === "TILES20") {
+    } else if (clean === "TILES20" || clean === "TRADE20") {
       setAppliedDiscount({ code: clean, percent: 20 });
       setDiscountCode("");
     } else {
@@ -849,14 +840,13 @@ export default function CartPage() {
 
   // Calculation of Subtotal & Discount
   const rawSubtotalCents = lines.reduce((sum, l) => sum + l.quantity * l.product.priceCents, 0);
-  // Total in Rupees using project conversion (4200 cents = ₹630)
-  const rawSubtotalRupees = Math.round((rawSubtotalCents / 100) * 15);
+  const rawSubtotalRupees = rawSubtotalCents;
 
   const discountAmountRupees = appliedDiscount
-    ? Math.round(rawSubtotalRupees * (appliedDiscount.percent / 100))
+    ? Math.round(rawSubtotalCents * (appliedDiscount.percent / 100))
     : 0;
 
-  const totalRupees = Math.max(0, rawSubtotalRupees - discountAmountRupees);
+  const totalRupees = Math.max(0, rawSubtotalCents - discountAmountRupees);
 
   if (loading) {
     return (
@@ -969,9 +959,7 @@ export default function CartPage() {
               {lines.map((line) => {
                 const isTile = isTileProduct(line.product);
                 const isBusy = updating === line.id;
-                const lineTotalRupees = Math.round(
-                  ((line.quantity * line.product.priceCents) / 100) * 15
-                );
+                const lineTotalRupees = line.quantity * line.product.priceCents;
 
                 return (
                   <article
@@ -1152,9 +1140,7 @@ export default function CartPage() {
                 {/* Full Product Names (No Truncation) with Quantity and Amount */}
                 <div className="space-y-3 mb-5 max-h-60 overflow-y-auto pr-1">
                   {lines.map((l) => {
-                    const lineTotalRupees = Math.round(
-                      ((l.quantity * l.product.priceCents) / 100) * 15
-                    );
+                    const lineTotalRupees = l.quantity * l.product.priceCents;
                     const isTile = isTileProduct(l.product);
                     const qtyLabel = isTile
                       ? `${l.quantity} ${l.quantity === 1 ? "box" : "boxes"}`

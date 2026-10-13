@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="600" height="600">
+  <defs>
+    <linearGradient id="tileGlow" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.1" />
+      <stop offset="60%" stop-color="#ffffff" stop-opacity="0" />
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.06" />
+    </linearGradient>
+    <filter id="tileBevel" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="1.5" stdDeviation="1" flood-opacity="0.12"/>
+    </filter>
+  </defs>
+  <rect width="600" height="600" fill="#d8d3c5" />
+  <g filter="url(#tileBevel)">
+    <!-- Row 1 -->
+    <rect x="24" y="24" width="168" height="168" rx="6" fill="#9ca3af" />
+    <rect x="24" y="24" width="168" height="168" rx="6" fill="url(#tileGlow)" />
+    <rect x="216" y="24" width="168" height="168" rx="6" fill="#9ca3af" />
+    <rect x="216" y="24" width="168" height="168" rx="6" fill="url(#tileGlow)" />
+    <rect x="408" y="24" width="168" height="168" rx="6" fill="#9ca3af" />
+    <rect x="408" y="24" width="168" height="168" rx="6" fill="url(#tileGlow)" />
+
+    <!-- Row 2 -->
+    <rect x="24" y="216" width="168" height="168" rx="6" fill="#9ca3af" />
+    <rect x="24" y="216" width="168" height="168" rx="6" fill="url(#tileGlow)" />
+    <rect x="216" y="216" width="168" height="168" rx="6" fill="#9ca3af" />
+    <rect x="216" y="216" width="168" height="168" rx="6" fill="url(#tileGlow)" />
+    <rect x="408" y="216" width="168" height="168" rx="6" fill="#9ca3af" />
+    <rect x="408" y="216" width="168" height="168" rx="6" fill="url(#tileGlow)" />
+
+    <!-- Row 3 -->
+    <rect x="24" y="408" width="168" height="168" rx="6" fill="#9ca3af" />
+    <rect x="24" y="408" width="168" height="168" rx="6" fill="url(#tileGlow)" />
+    <rect x="216" y="408" width="168" height="168" rx="6" fill="#9ca3af" />
+    <rect x="216" y="408" width="168" height="168" rx="6" fill="url(#tileGlow)" />
+    <rect x="408" y="408" width="168" height="168" rx="6" fill="#9ca3af" />
+    <rect x="408" y="408" width="168" height="168" rx="6" fill="url(#tileGlow)" />
+  </g>
+</svg>

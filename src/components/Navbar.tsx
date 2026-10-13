@@ -6,7 +6,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { useCartStore } from "@/store/cartStore";
 
 export function Navbar() {
-  const { count, refresh } = useCartStore();
+  const { count, refresh, openMiniCart, isOpen } = useCartStore();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
@@ -26,7 +26,7 @@ export function Navbar() {
   }
 
   return (
-    <header className="sticky top-0 z-50 border-b border-stone-200 bg-[#faf7f0]/90 backdrop-blur">
+    <header className="sticky top-0 z-40 border-b border-stone-200 bg-[#faf7f0]/90 backdrop-blur">
       <nav className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
         <Link href="/" className="text-lg font-semibold tracking-tight text-stone-900">
           Clay &amp; Co.
@@ -44,17 +44,20 @@ export function Navbar() {
           >
             Room visualizer
           </Link>
-          <Link
-            href="/cart"
-            className="relative rounded-full bg-stone-900 px-4 py-1.5 text-white transition hover:bg-stone-700"
+          <button
+            type="button"
+            onClick={openMiniCart}
+            aria-label="Open shopping bag"
+            aria-expanded={isOpen}
+            className="relative cursor-pointer rounded-full bg-stone-900 px-4 py-1.5 text-white transition hover:bg-stone-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-900"
           >
-            Cart
+            Bag
             {count > 0 && (
               <span className="ml-1.5 rounded-full bg-amber-400 px-1.5 py-0.5 text-xs font-semibold text-stone-900">
                 {count}
               </span>
             )}
-          </Link>
+          </button>
         </div>
       </nav>
     </header>

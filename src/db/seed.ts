@@ -1,11 +1,6 @@
 import "dotenv/config";
 import { getDb } from "@/db";
-import {
-  categories,
-  products,
-  productVariants,
-  type NewCategory,
-} from "@/db/schema";
+import { categories, products, productVariants, type NewCategory } from "@/db/schema";
 import { sql, eq } from "drizzle-orm";
 
 const categoriesData: NewCategory[] = [
@@ -92,7 +87,7 @@ const productsData: ProductSeed[] = [
     colourFamily: "White",
     sizeLabel: "20×20",
     showFromPrice: true,
-    images: ["https://images.unsplash.com/photo-1615971677499-5467cbab01c0?w=800&q=80"],
+    images: ["/images/products/chalk-white-20.svg"],
     specs: {
       Size: "20cm x 20cm",
       Material: "Glazed porcelain",
@@ -133,7 +128,7 @@ const productsData: ProductSeed[] = [
     colourFamily: "Terracotta",
     sizeLabel: "20×20",
     showFromPrice: false,
-    images: ["https://images.unsplash.com/photo-1582268611958-ebfd161ef9cf?w=800&q=80"],
+    images: ["/images/products/terracotta-warmth-20.svg"],
     specs: {
       Size: "20cm x 20cm",
       Material: "Glazed terracotta",
@@ -169,7 +164,7 @@ const productsData: ProductSeed[] = [
     colourFamily: "Charcoal",
     sizeLabel: "30×30",
     showFromPrice: false,
-    images: ["https://images.unsplash.com/photo-1634104373136-22d0752d0743?w=800&q=80"],
+    images: ["/images/products/charcoal-edge-30.svg"],
     specs: {
       Size: "30cm x 30cm",
       Material: "Glazed porcelain",
@@ -206,7 +201,7 @@ const productsData: ProductSeed[] = [
     colourFamily: "Green",
     sizeLabel: "15×15",
     showFromPrice: false,
-    images: ["https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&q=80"],
+    images: ["/images/products/sage-green-15.svg"],
     specs: {
       Size: "15cm x 15cm",
       Material: "Glazed porcelain",
@@ -242,7 +237,7 @@ const productsData: ProductSeed[] = [
     colourFamily: "Blue",
     sizeLabel: "20×20",
     showFromPrice: false,
-    images: ["https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800&q=80"],
+    images: ["/images/products/ink-blue-20.svg"],
     specs: {
       Size: "20cm x 20cm",
       Material: "Glazed porcelain",
@@ -278,7 +273,7 @@ const productsData: ProductSeed[] = [
     colourFamily: "Beige",
     sizeLabel: "25×25",
     showFromPrice: false,
-    images: ["https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?w=800&q=80"],
+    images: ["/images/products/warm-ivory-25.svg"],
     specs: {
       Size: "25cm x 25cm",
       Material: "Glazed porcelain",
@@ -314,7 +309,7 @@ const productsData: ProductSeed[] = [
     colourFamily: "Grey",
     sizeLabel: "60×60",
     showFromPrice: false,
-    images: ["https://images.pexels.com/photos/1122865/pexels-photo-1122865.jpeg"],
+    images: ["/images/products/slate-grey-outdoor-60.svg"],
     specs: {
       Size: "60cm x 60cm",
       Material: "Porcelain stoneware",
@@ -350,7 +345,7 @@ const productsData: ProductSeed[] = [
     colourFamily: "White",
     sizeLabel: "5×5 hex",
     showFromPrice: false,
-    images: ["https://images.pexels.com/photos/6969866/pexels-photo-6969866.jpeg"],
+    images: ["/images/products/marble-hex-mosaic.svg"],
     specs: {
       Size: "5cm hexagons on 30x30cm sheets",
       Material: "Carrara marble",
@@ -385,7 +380,7 @@ const productsData: ProductSeed[] = [
     colourFamily: "Grey",
     sizeLabel: "2.5×5",
     showFromPrice: false,
-    images: ["https://images.pexels.com/photos/6045273/pexels-photo-6045273.jpeg"],
+    images: ["/images/products/glass-subway-mosaic.svg"],
     specs: {
       Size: "2.5cm x 5cm on 30x30cm sheets",
       Material: "Iridescent glass",
@@ -408,7 +403,7 @@ const productsData: ProductSeed[] = [
     soldBy: "piece",
     priceCents: 3200,
     colorHex: "#9ca3af",
-    images: ["https://images.pexels.com/photos/8961186/pexels-photo-8961186.jpeg"],
+    images: ["/images/products/premium-tile-adhesive.svg"],
     specs: {
       Weight: "20kg bag",
       Coverage: "3-5 sqm per bag",
@@ -432,7 +427,7 @@ const productsData: ProductSeed[] = [
     soldBy: "piece",
     priceCents: 5900,
     colorHex: "#ffffff",
-    images: ["https://images.pexels.com/photos/6419120/pexels-photo-6419120.jpeg"],
+    images: ["/images/products/epoxy-tile-grout.svg"],
     specs: {
       Weight: "5kg kit",
       Coverage: "Approx 10-15 sqm (3mm joint)",
@@ -457,7 +452,7 @@ const productsData: ProductSeed[] = [
     soldBy: "piece",
     priceCents: 4200,
     colorHex: "#ef4444",
-    images: ["https://images.pexels.com/photos/5691621/pexels-photo-5691621.jpeg"],
+    images: ["/images/products/tile-leveling-spacers.svg"],
     specs: {
       Contents: "100 clips + 100 wedges + pliers",
       "Tile thickness": "3-16mm",
@@ -480,10 +475,7 @@ const productsData: ProductSeed[] = [
     soldBy: "piece",
     priceCents: 68900,
     colorHex: "#c08a5c",
-    images: [
-      "https://images.pexels.com/photos/13806257/pexels-photo-13806257.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200",
-      "https://images.pexels.com/photos/39351124/pexels-photo-39351124.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200",
-    ],
+    images: ["/images/products/harbor-armchair.svg"],
     specs: {
       Frame: "Solid oak",
       Seat: "High-resilience foam",
@@ -510,10 +502,7 @@ const productsData: ProductSeed[] = [
     soldBy: "piece",
     priceCents: 42900,
     colorHex: "#8a5a34",
-    images: [
-      "https://images.pexels.com/photos/1647662/pexels-photo-1647662.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200",
-      "https://images.pexels.com/photos/14784251/pexels-photo-14784251.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200",
-    ],
+    images: ["/images/products/kiln-coffee-table.svg"],
     specs: {
       Top: "Solid acacia wood",
       Legs: "Powder-coated steel",
@@ -539,10 +528,7 @@ const productsData: ProductSeed[] = [
     soldBy: "piece",
     priceCents: 21900,
     colorHex: "#f2e4c9",
-    images: [
-      "https://images.pexels.com/photos/26546549/pexels-photo-26546549.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200",
-      "https://images.pexels.com/photos/7722151/pexels-photo-7722151.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200",
-    ],
+    images: ["/images/products/studio-floor-lamp.svg"],
     specs: {
       Pole: "Blackened steel",
       Shade: "Linen blend",
@@ -571,10 +557,7 @@ const productsData: ProductSeed[] = [
     soldBy: "piece",
     priceCents: 54900,
     colorHex: "#b85c38",
-    images: [
-      "https://images.pexels.com/photos/7587290/pexels-photo-7587290.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200",
-      "https://images.pexels.com/photos/7060813/pexels-photo-7060813.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=627&w=1200",
-    ],
+    images: ["/images/products/atelier-bookshelf.svg"],
     specs: {
       Carcass: "Solid pine",
       Back_panel: "Painted MDF",
@@ -601,7 +584,7 @@ const productsData: ProductSeed[] = [
     soldBy: "piece",
     priceCents: 129900,
     colorHex: "#b5904d",
-    images: ["https://images.pexels.com/photos/1350789/pexels-photo-1350789.jpeg"],
+    images: ["/images/products/oak-dining-table.svg"],
     specs: {
       Material: "Solid European oak",
       Finish: "Natural oil",
@@ -628,7 +611,7 @@ const productsData: ProductSeed[] = [
     soldBy: "piece",
     priceCents: 89900,
     colorHex: "#e8dcc8",
-    images: ["https://images.pexels.com/photos/6312380/pexels-photo-6312380.jpeg"],
+    images: ["/images/products/linen-upholstered-bed.svg"],
     specs: {
       Frame: "Solid pine",
       Upholstery: "Natural linen",
@@ -655,7 +638,7 @@ const productsData: ProductSeed[] = [
     soldBy: "piece",
     priceCents: 67900,
     colorHex: "#a67c52",
-    images: ["https://images.pexels.com/photos/2255441/pexels-photo-2255441.jpeg"],
+    images: ["/images/products/teak-outdoor-bench.svg"],
     specs: {
       Material: "Solid teak",
       Finish: "Natural, weathers to grey",
@@ -728,7 +711,8 @@ async function main() {
         coveragePerBoxSqm: prod.coveragePerBoxSqm || null,
         priceCents: prod.priceCents,
         colorHex: prod.colorHex,
-        unit: prod.soldBy === "box" ? "per box" : prod.soldBy === "square_metre" ? "per sqm" : "each",
+        unit:
+          prod.soldBy === "box" ? "per box" : prod.soldBy === "square_metre" ? "per sqm" : "each",
         images: prod.images,
         specs: prod.specs,
         textureSet: prod.textureSet || null,
@@ -784,7 +768,8 @@ async function main() {
           arModelUrl: prod.arModelUrl || null,
           dimensions: prod.dimensions || null,
           featured: prod.featured || false,
-          unit: prod.soldBy === "box" ? "per box" : prod.soldBy === "square_metre" ? "per sqm" : "each",
+          unit:
+            prod.soldBy === "box" ? "per box" : prod.soldBy === "square_metre" ? "per sqm" : "each",
           soldBy: prod.soldBy,
           coveragePerBoxSqm: prod.coveragePerBoxSqm || null,
           updatedAt: new Date(),
@@ -792,11 +777,7 @@ async function main() {
       });
 
     // Get the product ID
-    const [product] = await db
-      .select()
-      .from(products)
-      .where(eq(products.slug, prod.slug))
-      .limit(1);
+    const [product] = await db.select().from(products).where(eq(products.slug, prod.slug)).limit(1);
 
     console.log(`  ✓ ${prod.name}`);
 
