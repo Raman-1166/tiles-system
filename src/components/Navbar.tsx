@@ -44,6 +44,12 @@ export function Navbar() {
           >
             Room visualizer
           </Link>
+          <Link
+            href="/account"
+            className={`hover:text-stone-950 transition-colors ${pathname.startsWith("/account") ? "font-semibold text-stone-950 underline underline-offset-4" : ""}`}
+          >
+            Account
+          </Link>
           <button
             type="button"
             onClick={openMiniCart}
