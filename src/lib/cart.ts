@@ -27,36 +27,29 @@ export async function addToCart(params: {
   const { sessionId, productId, variantId, quantity, variant = null, meta = null } = params;
   const { db } = getDb();
 
-  // If an identical line (same product + variant + no meta) already exists, bump quantity.
-  if (!meta) {
-    const existing = await db
-      .select()
-      .from(cartItems)
-      .where(
-        and(
-          eq(cartItems.sessionId, sessionId),
-          eq(cartItems.productId, productId)
-        )
-      );
-    const match = existing.find((e) => 
-      (e.variant ?? null) === variant && 
+  // If an identical line (same product + variant + matching meta) already exists, bump quantity.
+  const existing = await db
+    .select()
+    .from(cartItems)
+    .where(and(eq(cartItems.sessionId, sessionId), eq(cartItems.productId, productId)));
+  const metaStr = meta ? JSON.stringify(meta) : null;
+  const match = existing.find((e) => {
+    const eMetaStr = e.meta ? JSON.stringify(e.meta) : null;
+    return (
+      (e.variant ?? null) === variant &&
       (e.variantId ?? null) === (variantId ?? null) &&
-      !e.meta
+      eMetaStr === metaStr
     );
-    if (match) {
-      await db
-        .update(cartItems)
-        .set({ quantity: match.quantity + quantity })
-        .where(eq(cartItems.id, match.id));
-      
-      // MySQL: Read after update
-      const [updated] = await db
-        .select()
-        .from(cartItems)
-        .where(eq(cartItems.id, match.id))
-        .limit(1);
-      return updated;
-    }
+  });
+  if (match) {
+    await db
+      .update(cartItems)
+      .set({ quantity: match.quantity + quantity })
+      .where(eq(cartItems.id, match.id));
+
+    // MySQL: Read after update
+    const [updated] = await db.select().from(cartItems).where(eq(cartItems.id, match.id)).limit(1);
+    return updated;
   }
 
   // MySQL: Insert and read the result
@@ -66,15 +59,11 @@ export async function addToCart(params: {
 
   // Extract insertId from MySQL result
   const insertId = Number(
-    (result as unknown as { insertId: number | bigint }).insertId || 
-    (result as unknown as { insertId: number | bigint }[])[0]?.insertId
+    (result as unknown as { insertId: number | bigint }).insertId ||
+      (result as unknown as { insertId: number | bigint }[])[0]?.insertId
   );
 
-  const [created] = await db
-    .select()
-    .from(cartItems)
-    .where(eq(cartItems.id, insertId))
-    .limit(1);
+  const [created] = await db.select().from(cartItems).where(eq(cartItems.id, insertId)).limit(1);
 
   return created;
 }
@@ -89,13 +78,9 @@ export async function updateCartItemQuantity(id: number, sessionId: string, quan
     .update(cartItems)
     .set({ quantity })
     .where(and(eq(cartItems.id, id), eq(cartItems.sessionId, sessionId)));
-  
+
   // MySQL: Read after update
-  const [updated] = await db
-    .select()
-    .from(cartItems)
-    .where(eq(cartItems.id, id))
-    .limit(1);
+  const [updated] = await db.select().from(cartItems).where(eq(cartItems.id, id)).limit(1);
   return updated || null;
 }
 

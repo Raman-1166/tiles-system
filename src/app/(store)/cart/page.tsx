@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useId } from "react";
 import Link from "next/link";
 import { useCartStore } from "@/store/cartStore";
 import { formatMoney } from "@/lib/money";
+import { SAMPLE_SWATCH_PRICE_CENTS } from "@/config/commerce";
 import type { Product } from "@/db/schema";
 
 export type CartLine = {
@@ -479,8 +480,14 @@ function QuantityStepper({
   };
 
   // Unit price
-  const unitPriceFormatted = formatRupees(line.product.priceCents);
-  const unitPriceLabel = isTile ? `${unitPriceFormatted} per box` : `${unitPriceFormatted} each`;
+  const isSample = Boolean(line.meta && (line.meta as Record<string, unknown>).isSample);
+  const unitPriceCents = isSample ? SAMPLE_SWATCH_PRICE_CENTS : line.product.priceCents;
+  const unitPriceFormatted = formatRupees(unitPriceCents);
+  const unitPriceLabel = isSample
+    ? `${unitPriceFormatted} per swatch`
+    : isTile
+      ? `${unitPriceFormatted} per box`
+      : `${unitPriceFormatted} each`;
 
   return (
     <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
@@ -509,7 +516,9 @@ function QuantityStepper({
           onChange={(e) => setTypedQty(e.target.value)}
           onBlur={handleInputBlur}
           onKeyDown={handleInputKeyDown}
-          aria-label={isTile ? "Quantity in boxes" : "Quantity"}
+          aria-label={
+            isSample ? "Quantity of sample swatches" : isTile ? "Quantity in boxes" : "Quantity"
+          }
           className="w-12 text-center text-sm font-semibold font-heading text-stone-900 dark:text-stone-100 bg-transparent border-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0D4D47] dark:focus-visible:ring-[#2DD4BF] rounded-[4px] [-moz-appearance:_textfield] [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:m-0 [&::-webkit-outer-spin-button]:appearance-none"
         />
 
@@ -839,7 +848,11 @@ export default function CartPage() {
   };
 
   // Calculation of Subtotal & Discount
-  const rawSubtotalCents = lines.reduce((sum, l) => sum + l.quantity * l.product.priceCents, 0);
+  const rawSubtotalCents = lines.reduce((sum, l) => {
+    const isSample = Boolean(l.meta && (l.meta as Record<string, unknown>).isSample);
+    const price = isSample ? SAMPLE_SWATCH_PRICE_CENTS : l.product.priceCents;
+    return sum + l.quantity * price;
+  }, 0);
   const rawSubtotalRupees = rawSubtotalCents;
 
   const discountAmountRupees = appliedDiscount
@@ -959,7 +972,13 @@ export default function CartPage() {
               {lines.map((line) => {
                 const isTile = isTileProduct(line.product);
                 const isBusy = updating === line.id;
-                const lineTotalRupees = line.quantity * line.product.priceCents;
+                const isSample = Boolean(
+                  line.meta && (line.meta as Record<string, unknown>).isSample
+                );
+                const unitPriceCents = isSample
+                  ? SAMPLE_SWATCH_PRICE_CENTS
+                  : line.product.priceCents;
+                const lineTotalRupees = line.quantity * unitPriceCents;
 
                 return (
                   <article
@@ -997,10 +1016,21 @@ export default function CartPage() {
                             <h2 className="text-base sm:text-lg font-bold font-heading text-stone-900 dark:text-stone-50 leading-snug">
                               {line.product.name}
                             </h2>
-                            {line.product.tagline && (
-                              <p className="mt-0.5 text-xs text-stone-500 dark:text-stone-400 line-clamp-2">
-                                {line.product.tagline}
-                              </p>
+                            {isSample ? (
+                              <div className="mt-1 flex items-center gap-2 flex-wrap">
+                                <span className="inline-flex items-center gap-1 rounded bg-amber-100 dark:bg-amber-950/40 px-2.5 py-0.5 text-xs font-semibold text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50">
+                                  Cut Sample Swatch (10×10 cm)
+                                </span>
+                                <span className="text-xs text-stone-500 dark:text-stone-400">
+                                  • Includes $25 studio credit on checkout
+                                </span>
+                              </div>
+                            ) : (
+                              line.product.tagline && (
+                                <p className="mt-0.5 text-xs text-stone-500 dark:text-stone-400 line-clamp-2">
+                                  {line.product.tagline}
+                                </p>
+                              )
                             )}
                           </div>
 
@@ -1013,15 +1043,17 @@ export default function CartPage() {
                         </div>
 
                         {/* Architectural Spec Grid (Room, Surfaces, Layout, Grout) */}
-                        <SpecGrid
-                          isTile={isTile}
-                          meta={line.meta}
-                          product={line.product}
-                          variant={line.variant}
-                        />
+                        {!isSample && (
+                          <SpecGrid
+                            isTile={isTile}
+                            meta={line.meta}
+                            product={line.product}
+                            variant={line.variant}
+                          />
+                        )}
 
-                        {/* Tile Coverage Box (Tiles Only) */}
-                        {isTile && (
+                        {/* Tile Coverage Box (Tiles Only, non-samples) */}
+                        {isTile && !isSample && (
                           <TileCoverageBox
                             line={line}
                             onAddBoxes={(newQty) => updateQty(line.id, newQty)}

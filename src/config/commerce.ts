@@ -49,6 +49,18 @@ export const TILE_MIN_EXTRA_BOXES = 1;
 // ---------------------------------------------------------------------------
 // Payment
 // ---------------------------------------------------------------------------
-/** Set via PAYMENT_PROVIDER env var. Only "mock" is supported right now. */
+/** Set via PAYMENT_PROVIDER env var. Only "mock" and "stripe" are supported. */
 export const SUPPORTED_PAYMENT_PROVIDERS = ["mock", "stripe"] as const;
 export type PaymentProvider = (typeof SUPPORTED_PAYMENT_PROVIDERS)[number];
+
+// ---------------------------------------------------------------------------
+// Tile Samples
+// ---------------------------------------------------------------------------
+/** Fixed nominal price for an individual cut tile sample swatch in cents ($5.00). */
+export const SAMPLE_SWATCH_PRICE_CENTS = 500;
+/** Maximum sample swatches allowed in a single order. */
+export const MAX_SAMPLES_PER_ORDER = 5;
+/** Standard cut dimension for sample swatches. */
+export const SAMPLE_SWATCH_SIZE_LABEL = "10×10 cm Cut Swatch";
+/** Promo voucher credit awarded per sample kit order toward full crate orders ($25.00). */
+export const SAMPLE_VOUCHER_CREDIT_CENTS = 2500;

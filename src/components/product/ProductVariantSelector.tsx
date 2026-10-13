@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import type { ProductWithDetails, ProductVariant } from "@/db/schema";
+import { useCartStore } from "@/store/cartStore";
+import { SAMPLE_SWATCH_PRICE_CENTS, SAMPLE_SWATCH_SIZE_LABEL } from "@/config/commerce";
 
 type Props = {
   product: ProductWithDetails;
@@ -45,9 +47,11 @@ export function ProductVariantSelector({ product, variants }: Props) {
   const sizes = [...new Set(variants.map((v) => v.size).filter(Boolean))];
   const finishes = [...new Set(variants.map((v) => v.finish).filter(Boolean))];
 
+  const [isAddingSample, setIsAddingSample] = useState(false);
+
   const handleAddToCart = async () => {
     if (!selectedVariant) return;
-    
+
     setIsAdding(true);
     try {
       const response = await fetch("/api/cart", {
@@ -57,20 +61,68 @@ export function ProductVariantSelector({ product, variants }: Props) {
           productId: product.id,
           variantId: selectedVariant.id,
           quantity,
+          variant:
+            [selectedVariant.colour, selectedVariant.finish].filter(Boolean).join(" - ") || null,
         }),
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to add to cart");
+      const data = await response.json();
+      if (!response.ok || !data.ok) {
+        throw new Error(data.error?.message || "Failed to add to cart");
       }
 
+      useCartStore.getState().setFromResponse(data);
+      useCartStore
+        .getState()
+        .showToast(`Added ${quantity} × ${product.name} to your bag`, "success");
+      useCartStore.getState().openMiniCart();
       setQuantity(1);
-      // TODO: Show success toast
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Failed to add to cart:", error);
-      // TODO: Show error toast
+      const msg =
+        error instanceof Error ? error.message : "Could not add to bag. Please try again.";
+      useCartStore.getState().showToast(msg, "error");
     } finally {
       setIsAdding(false);
+    }
+  };
+
+  const handleOrderSample = async () => {
+    setIsAddingSample(true);
+    try {
+      const response = await fetch("/api/cart", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          productId: product.id,
+          variantId: selectedVariant?.id,
+          quantity: 1,
+          variant: selectedVariant
+            ? [selectedVariant.colour, selectedVariant.finish].filter(Boolean).join(" - ")
+            : null,
+          meta: {
+            isSample: true,
+            swatchSize: SAMPLE_SWATCH_SIZE_LABEL,
+          },
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data.ok) {
+        throw new Error(data.error?.message || "Failed to add sample");
+      }
+
+      useCartStore.getState().setFromResponse(data);
+      useCartStore
+        .getState()
+        .showToast(`Added ${product.name} sample swatch ($5.00) to your bag`, "success");
+      useCartStore.getState().openMiniCart();
+    } catch (error: unknown) {
+      console.error("Failed to order sample:", error);
+      const msg = error instanceof Error ? error.message : "Could not add sample swatch to bag.";
+      useCartStore.getState().showToast(msg, "error");
+    } finally {
+      setIsAddingSample(false);
     }
   };
 
@@ -80,32 +132,22 @@ export function ProductVariantSelector({ product, variants }: Props) {
       <div>
         {salePrice ? (
           <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-bold text-[#E8A81C]">
-              {formatPrice(salePrice)}
-            </span>
-            <span className="text-xl text-[#14262B]/50 line-through">
-              {formatPrice(price)}
-            </span>
+            <span className="text-3xl font-bold text-[#E8A81C]">{formatPrice(salePrice)}</span>
+            <span className="text-xl text-[#14262B]/50 line-through">{formatPrice(price)}</span>
             <span className="rounded bg-[#E8A81C] px-2 py-1 text-xs font-medium text-white">
               SALE
             </span>
           </div>
         ) : (
-          <div className="text-3xl font-bold text-[#14262B]">
-            {formatPrice(price)}
-          </div>
+          <div className="text-3xl font-bold text-[#14262B]">{formatPrice(price)}</div>
         )}
-        {sku && (
-          <p className="mt-1 text-sm text-[#14262B]/70">SKU: {sku}</p>
-        )}
+        {sku && <p className="mt-1 text-sm text-[#14262B]/70">SKU: {sku}</p>}
       </div>
 
       {/* Colour Selector */}
       {colours.length > 0 && (
         <div>
-          <label className="mb-2 block text-sm font-medium text-[#14262B]">
-            Colour
-          </label>
+          <label className="mb-2 block text-sm font-medium text-[#14262B]">Colour</label>
           <div className="flex flex-wrap gap-2">
             {colours.map((colour) => {
               const variant = variants.find((v) => v.colour === colour);
@@ -140,9 +182,7 @@ export function ProductVariantSelector({ product, variants }: Props) {
       {/* Size Selector */}
       {sizes.length > 0 && (
         <div>
-          <label className="mb-2 block text-sm font-medium text-[#14262B]">
-            Size
-          </label>
+          <label className="mb-2 block text-sm font-medium text-[#14262B]">Size</label>
           <div className="flex flex-wrap gap-2">
             {sizes.map((size) => {
               const variant = variants.find((v) => v.size === size);
@@ -168,9 +208,7 @@ export function ProductVariantSelector({ product, variants }: Props) {
       {/* Finish Selector */}
       {finishes.length > 0 && (
         <div>
-          <label className="mb-2 block text-sm font-medium text-[#14262B]">
-            Finish
-          </label>
+          <label className="mb-2 block text-sm font-medium text-[#14262B]">Finish</label>
           <div className="flex flex-wrap gap-2">
             {finishes.map((finish) => {
               const variant = variants.find((v) => v.finish === finish);
@@ -229,11 +267,13 @@ export function ProductVariantSelector({ product, variants }: Props) {
               min="1"
               max={stock}
               value={quantity}
-              onChange={(e) => setQuantity(Math.min(stock, Math.max(1, parseInt(e.target.value) || 1)))}
+              onChange={(e) =>
+                setQuantity(Math.min(stock, Math.max(1, parseInt(e.target.value) || 1)))
+              }
               className="w-20 rounded border border-[#14262B]/20 px-3 py-2 text-[#14262B]"
             />
           </div>
-          
+
           <button
             onClick={handleAddToCart}
             disabled={isAdding || !selectedVariant}
@@ -241,6 +281,37 @@ export function ProductVariantSelector({ product, variants }: Props) {
           >
             {isAdding ? "Adding..." : "Add to Cart"}
           </button>
+        </div>
+      )}
+
+      {/* Tile Sample Swatch Order Option */}
+      {product.category?.type === "tile" && (
+        <div className="rounded-xl border border-amber-800/20 bg-amber-500/10 p-4">
+          <div className="flex items-start justify-between gap-3 flex-wrap sm:flex-nowrap">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center rounded-full bg-amber-600/15 px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-amber-900">
+                  Sample Swatch
+                </span>
+                <span className="text-xs text-[#14262B]/70">{SAMPLE_SWATCH_SIZE_LABEL}</span>
+              </div>
+              <p className="mt-1 text-sm font-medium text-[#14262B]">
+                Order an individual cut sample to inspect glaze tone, texture, and light reflection
+                in your space.
+              </p>
+              <p className="mt-0.5 text-xs text-[#0F6B6B] font-medium">
+                ✨ Includes $25 studio credit toward your future full crate order
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleOrderSample}
+              disabled={isAddingSample}
+              className="shrink-0 cursor-pointer rounded-full border border-stone-800 bg-stone-900 px-4 py-2 text-xs font-semibold text-white transition hover:bg-stone-700 disabled:opacity-60"
+            >
+              {isAddingSample ? "Adding…" : "Order Sample — $5.00"}
+            </button>
+          </div>
         </div>
       )}
     </div>

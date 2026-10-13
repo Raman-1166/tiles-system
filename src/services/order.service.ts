@@ -8,7 +8,7 @@ import { createOrderToken, verifyOrderToken } from "@/lib/order-token";
 import { ProductService } from "@/services/product.service";
 import { CartService } from "@/services/cart.service";
 import { EmailService } from "@/services/email.service";
-import type { ShippingOptionId } from "@/config/commerce";
+import { type ShippingOptionId, SAMPLE_SWATCH_PRICE_CENTS } from "@/config/commerce";
 
 export interface ShippingAddressInput {
   name: string;
@@ -77,12 +77,19 @@ export class OrderService {
         line.quantity
       );
 
+      const isSample = Boolean(line.meta && (line.meta as Record<string, unknown>).isSample);
+      const finalPriceCents = isSample ? SAMPLE_SWATCH_PRICE_CENTS : unitPriceCents;
+      const itemName = isSample ? `${product.name} (Sample Swatch)` : product.name;
+      const itemSku = isSample
+        ? `${variant?.sku ?? product.slug}-SAMPLE`
+        : (variant?.sku ?? product.slug);
+
       validatedLines.push({
         productId: product.id,
         variantId: variant?.id ?? null,
-        name: product.name,
-        sku: variant?.sku ?? product.slug,
-        unitPriceCents,
+        name: itemName,
+        sku: itemSku,
+        unitPriceCents: finalPriceCents,
         quantity: line.quantity,
         meta: line.meta,
       });

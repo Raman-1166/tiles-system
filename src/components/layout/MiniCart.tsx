@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { useCartStore } from "@/store/cartStore";
 import { formatMoney } from "@/lib/money";
+import { SAMPLE_SWATCH_PRICE_CENTS } from "@/config/commerce";
 
 export function MiniCart() {
   const { isOpen, closeMiniCart, lines, count, totalCents, updateQuantity, removeItem } =
@@ -121,71 +122,88 @@ export function MiniCart() {
                 </Link>
               </div>
             ) : (
-              lines.map((line) => (
-                <div key={line.id} className="py-4 flex gap-4 items-start">
-                  {/* Thumbnail / Product info */}
-                  <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg border border-stone-200 bg-white p-1 shadow-2xs">
-                    <span className="font-serif text-xs font-bold text-stone-400">
-                      {line.product.name.slice(0, 2).toUpperCase()}
-                    </span>
-                  </div>
+              lines.map((line) => {
+                const isSample = Boolean(
+                  line.meta && (line.meta as Record<string, unknown>).isSample
+                );
+                const unitPriceCents = isSample
+                  ? SAMPLE_SWATCH_PRICE_CENTS
+                  : line.product.priceCents;
 
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2">
-                      <Link
-                        href={`/shop`}
-                        onClick={closeMiniCart}
-                        className="truncate text-sm font-semibold text-stone-900 hover:underline"
-                      >
-                        {line.product.name}
-                      </Link>
-                      <button
-                        onClick={() => removeItem(line.id)}
-                        aria-label={`Remove ${line.product.name}`}
-                        className="text-stone-400 hover:text-red-600 transition-colors text-xs"
-                      >
-                        ✕
-                      </button>
+                return (
+                  <div key={line.id} className="py-4 flex gap-4 items-start">
+                    {/* Thumbnail / Product info */}
+                    <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg border border-stone-200 bg-white p-1 shadow-2xs">
+                      <span className="font-serif text-xs font-bold text-stone-400">
+                        {line.product.name.slice(0, 2).toUpperCase()}
+                      </span>
                     </div>
 
-                    {line.variant && (
-                      <p className="mt-0.5 text-xs text-stone-500">
-                        Finish / Shade:{" "}
-                        <span className="font-medium text-stone-700">{line.variant}</span>
-                      </p>
-                    )}
-
-                    <div className="mt-3 flex items-center justify-between">
-                      {/* Quantity Controls */}
-                      <div className="flex items-center rounded-md border border-stone-300 bg-white shadow-2xs">
-                        <button
-                          onClick={() => updateQuantity(line.id, Math.max(1, line.quantity - 1))}
-                          disabled={line.quantity <= 1}
-                          aria-label="Decrease quantity"
-                          className="px-2 py-0.5 text-xs text-stone-600 hover:bg-stone-100 disabled:opacity-40"
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <Link
+                          href={`/shop`}
+                          onClick={closeMiniCart}
+                          className="truncate text-sm font-semibold text-stone-900 hover:underline"
                         >
-                          −
-                        </button>
-                        <span className="px-2 text-xs font-medium text-stone-900">
-                          {line.quantity}
-                        </span>
+                          {line.product.name}
+                        </Link>
                         <button
-                          onClick={() => updateQuantity(line.id, line.quantity + 1)}
-                          aria-label="Increase quantity"
-                          className="px-2 py-0.5 text-xs text-stone-600 hover:bg-stone-100"
+                          onClick={() => removeItem(line.id)}
+                          aria-label={`Remove ${line.product.name}`}
+                          className="text-stone-400 hover:text-red-600 transition-colors text-xs"
                         >
-                          +
+                          ✕
                         </button>
                       </div>
 
-                      {/* Line Price */}
-                      <span className="text-sm font-semibold text-stone-900">
-                        {formatMoney(line.quantity * line.product.priceCents)}
-                      </span>
+                      {isSample ? (
+                        <div className="mt-1">
+                          <span className="inline-flex items-center gap-1 rounded bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800 border border-amber-200">
+                            Sample Swatch (10×10 cm)
+                          </span>
+                        </div>
+                      ) : (
+                        line.variant && (
+                          <p className="mt-0.5 text-xs text-stone-500">
+                            Finish / Shade:{" "}
+                            <span className="font-medium text-stone-700">{line.variant}</span>
+                          </p>
+                        )
+                      )}
+
+                      <div className="mt-3 flex items-center justify-between">
+                        {/* Quantity Controls */}
+                        <div className="flex items-center rounded-md border border-stone-300 bg-white shadow-2xs">
+                          <button
+                            onClick={() => updateQuantity(line.id, Math.max(1, line.quantity - 1))}
+                            disabled={line.quantity <= 1}
+                            aria-label="Decrease quantity"
+                            className="px-2 py-0.5 text-xs text-stone-600 hover:bg-stone-100 disabled:opacity-40"
+                          >
+                            −
+                          </button>
+                          <span className="px-2 text-xs font-medium text-stone-900">
+                            {line.quantity}
+                          </span>
+                          <button
+                            onClick={() => updateQuantity(line.id, line.quantity + 1)}
+                            aria-label="Increase quantity"
+                            className="px-2 py-0.5 text-xs text-stone-600 hover:bg-stone-100"
+                          >
+                            +
+                          </button>
+                        </div>
+
+                        {/* Line Price */}
+                        <span className="text-sm font-semibold text-stone-900">
+                          {formatMoney(line.quantity * unitPriceCents)}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
 
@@ -203,6 +221,18 @@ export function MiniCart() {
               <p className="text-[11px] text-stone-500 leading-tight">
                 Pallet freight, wastage allowance, and local taxes calculated at checkout.
               </p>
+
+              {lines.some((l) =>
+                Boolean(l.meta && (l.meta as Record<string, unknown>).isSample)
+              ) && (
+                <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 px-3 py-2 text-[11px] text-amber-900 flex items-center gap-2">
+                  <span>✨</span>
+                  <span>
+                    Each sample includes <strong>$25 studio credit</strong> toward your future tile
+                    crate order.
+                  </span>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Link

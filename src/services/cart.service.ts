@@ -7,7 +7,13 @@ import {
   type CartLine,
 } from "@/lib/cart";
 import { calcSubtotal, calcTax, calcOrderTotal } from "@/lib/money";
-import { shippingCentsForMethod, type ShippingOptionId, DEFAULT_TAX_RATE } from "@/config/commerce";
+import {
+  shippingCentsForMethod,
+  type ShippingOptionId,
+  DEFAULT_TAX_RATE,
+  SAMPLE_SWATCH_PRICE_CENTS,
+  MAX_SAMPLES_PER_ORDER,
+} from "@/config/commerce";
 import { ProductService } from "@/services/product.service";
 import { AppError, ERROR_CODES } from "@/lib/api-response";
 
@@ -25,10 +31,14 @@ export class CartService {
    */
   static calculateTotals(lines: CartLine[], shippingMethod: ShippingOptionId = "standard") {
     const subtotalCents = calcSubtotal(
-      lines.map((line) => ({
-        unitPriceCents: line.product.priceCents,
-        quantity: line.quantity,
-      }))
+      lines.map((line) => {
+        const isSample = Boolean(line.meta && (line.meta as Record<string, unknown>).isSample);
+        const unitPriceCents = isSample ? SAMPLE_SWATCH_PRICE_CENTS : line.product.priceCents;
+        return {
+          unitPriceCents,
+          quantity: line.quantity,
+        };
+      })
     );
 
     const shippingCents = shippingCentsForMethod(shippingMethod);
@@ -46,7 +56,7 @@ export class CartService {
   }
 
   /**
-   * Add item to cart with stock validation.
+   * Add item to cart with stock and sample limit validation.
    */
   static async addItem(params: {
     sessionId: string;
@@ -58,6 +68,22 @@ export class CartService {
   }) {
     if (params.quantity <= 0) {
       throw new AppError(ERROR_CODES.VALIDATION_ERROR, "Quantity must be greater than zero", 400);
+    }
+
+    const isSample = Boolean(params.meta && (params.meta as Record<string, unknown>).isSample);
+    if (isSample) {
+      const existingLines = await CartService.getLines(params.sessionId);
+      const currentSampleCount = existingLines
+        .filter((l) => Boolean(l.meta && (l.meta as Record<string, unknown>).isSample))
+        .reduce((sum, l) => sum + l.quantity, 0);
+
+      if (currentSampleCount + params.quantity > MAX_SAMPLES_PER_ORDER) {
+        throw new AppError(
+          ERROR_CODES.VALIDATION_ERROR,
+          `You can order a maximum of ${MAX_SAMPLES_PER_ORDER} sample swatches per order.`,
+          400
+        );
+      }
     }
 
     // Validate product existence and stock
