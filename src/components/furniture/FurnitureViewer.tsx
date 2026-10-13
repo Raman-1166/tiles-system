@@ -36,9 +36,9 @@ export function FurnitureViewer({ product }: Props) {
     depthCm: number;
     heightCm: number;
   }>({
-    widthCm: product.dimensions?.width ?? 80,
-    depthCm: product.dimensions?.depth ?? 80,
-    heightCm: product.dimensions?.height ?? 85,
+    widthCm: Number(product.dimensions?.width) || 80,
+    depthCm: Number(product.dimensions?.depth) || 80,
+    heightCm: Number(product.dimensions?.height) || 85,
   });
 
   // State refs for animation loop
@@ -102,9 +102,9 @@ export function FurnitureViewer({ product }: Props) {
       const box = new THREE.Box3().setFromObject(model);
       const size = box.getSize(new THREE.Vector3());
       setFitDimensions({
-        widthCm: product.dimensions?.width ?? Math.round(size.x * 100),
-        depthCm: product.dimensions?.depth ?? Math.round(size.z * 100),
-        heightCm: product.dimensions?.height ?? Math.round(size.y * 100),
+        widthCm: Number(product.dimensions?.width) || Math.round(size.x * 100),
+        depthCm: Number(product.dimensions?.depth) || Math.round(size.z * 100),
+        heightCm: Number(product.dimensions?.height) || Math.round(size.y * 100),
       });
     },
     [meta.modelType, product.dimensions]
@@ -318,7 +318,13 @@ export function FurnitureViewer({ product }: Props) {
       {/* ── "Will it fit?" Card ── */}
       <div className={s.infoCard}>
         <div className={s.infoCardTitle}>
-          <svg className="w-4 h-4 text-[#0f6b6b]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg
+            className="w-4 h-4 text-[#0f6b6b]"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
             <rect x="3" y="3" width="18" height="18" rx="2" />
             <path d="M3 9h18M9 21V9" />
           </svg>
@@ -343,7 +349,13 @@ export function FurnitureViewer({ product }: Props) {
       {/* ── Details Card ── */}
       <div className={s.infoCard}>
         <div className={s.infoCardTitle}>
-          <svg className="w-4 h-4 text-[#0f6b6b]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg
+            className="w-4 h-4 text-[#0f6b6b]"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
             <circle cx="12" cy="12" r="10" />
             <line x1="12" y1="16" x2="12" y2="12" />
             <line x1="12" y1="8" x2="12.01" y2="8" />
@@ -370,7 +382,13 @@ export function FurnitureViewer({ product }: Props) {
       {/* ── "Place in 3D room" Ghost Button ── */}
       <div>
         <Link href={`/visualizer?furniture=${product.slug}`} className={s.ghostBtn}>
-          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg
+            className="w-4 h-4"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
             <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
             <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
             <line x1="12" y1="22.08" x2="12" y2="12" />

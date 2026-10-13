@@ -1,6 +1,7 @@
 import { drizzle } from "drizzle-orm/mysql2";
 import type { MySql2Database } from "drizzle-orm/mysql2";
 import mysql from "mysql2/promise";
+import { env } from "@/lib/env";
 
 const globalForDb = globalThis as typeof globalThis & {
   __tilestorePool?: mysql.Pool;
@@ -11,11 +12,7 @@ let pool: mysql.Pool | undefined;
 let db: MySql2Database | undefined;
 
 function getDb() {
-  const databaseUrl = process.env.DATABASE_URL;
-
-  if (!databaseUrl) {
-    throw new Error("DATABASE_URL is required");
-  }
+  const databaseUrl = env.DATABASE_URL;
 
   if (!pool) {
     pool = globalForDb.__tilestorePool ?? mysql.createPool(databaseUrl);
@@ -27,7 +24,7 @@ function getDb() {
 
   if (!db) {
     db = drizzle(pool) as MySql2Database;
-    
+
     if (process.env.NODE_ENV !== "production") {
       globalForDb.__tilestoreDb = db;
     }

@@ -2,16 +2,7 @@ import * as THREE from "three";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 export type FurnitureModelType =
-  | "sofa"
-  | "chair"
-  | "stool"
-  | "arm"
-  | "dining"
-  | "coffee"
-  | "side"
-  | "shelf"
-  | "bed"
-  | "lamp";
+  "sofa" | "chair" | "stool" | "arm" | "dining" | "coffee" | "side" | "shelf" | "bed" | "lamp";
 
 export interface FurnitureColourOption {
   name: string;
@@ -60,12 +51,21 @@ export interface FurnitureProductInput {
   name?: string;
   category?: { name?: string; slug?: string } | null;
   categorySlug?: string;
-  dimensions?: { width?: number; depth?: number; height?: number } | null;
+  dimensions?: {
+    width?: number | string;
+    depth?: number | string;
+    height?: number | string;
+  } | null;
+  material?: string | null;
+  specs?: Record<string, any> | null;
+  variants?: Array<Record<string, any>> | null;
+  productVariants?: Array<Record<string, any>> | null;
+  colorHex?: string | null;
 }
 
 // ── Meta Derivation ────────────────────────────────────────────────────────
 export function getFurnitureMeta(product?: FurnitureProductInput | null): FurnitureMeta {
-  const prodKey = product?.slug || product?.id || product?.name || "unknown";
+  const prodKey = String(product?.slug || product?.id || product?.name || "unknown");
   const name = String(product?.name || "").toLowerCase();
   const categoryName = String(
     product?.category?.name || product?.categorySlug || product?.category?.slug || ""
@@ -98,11 +98,7 @@ export function getFurnitureMeta(product?: FurnitureProductInput | null): Furnit
     name.includes("light")
   ) {
     modelType = "lamp";
-  } else if (
-    categoryName.includes("table") ||
-    name.includes("table") ||
-    name.includes("desk")
-  ) {
+  } else if (categoryName.includes("table") || name.includes("table") || name.includes("desk")) {
     if (name.includes("coffee")) {
       modelType = "coffee";
     } else {
@@ -161,8 +157,8 @@ export function getFurnitureMeta(product?: FurnitureProductInput | null): Furnit
   const rawVariants = Array.isArray(product?.variants)
     ? product.variants
     : Array.isArray(product?.productVariants)
-    ? product.productVariants
-    : [];
+      ? product.productVariants
+      : [];
 
   const seenColours = new Set<string>();
 
@@ -179,10 +175,7 @@ export function getFurnitureMeta(product?: FurnitureProductInput | null): Furnit
           p.name.toLowerCase().includes(rawColour.toLowerCase())
       );
 
-      const hex =
-        v.colorHex ||
-        matched?.hex ||
-        (rawColour.startsWith("#") ? rawColour : null);
+      const hex = v.colorHex || matched?.hex || (rawColour.startsWith("#") ? rawColour : null);
 
       if (hex) {
         colourOptions.push({ name: rawColour, hex });
@@ -211,10 +204,7 @@ export function getFurnitureMeta(product?: FurnitureProductInput | null): Furnit
 }
 
 // ── Three.js Helpers ───────────────────────────────────────────────────────
-function matStandard(
-  color: string,
-  options: { roughness?: number; metalness?: number } = {}
-) {
+function matStandard(color: string, options: { roughness?: number; metalness?: number } = {}) {
   return new THREE.MeshStandardMaterial({
     color,
     roughness: options.roughness ?? 0.7,
@@ -468,9 +458,7 @@ export const F: Record<FurnitureModelType, (colour: string) => THREE.Group> = {
 
     // 5 Shelves
     const shelfGeo = new THREE.BoxGeometry(0.88, 0.03, 0.32);
-    [0.04, 0.44, 0.84, 1.24, 1.56].forEach((y) =>
-      addMesh(root, shelfGeo, frameMat, [0, y, 0])
-    );
+    [0.04, 0.44, 0.84, 1.24, 1.56].forEach((y) => addMesh(root, shelfGeo, frameMat, [0, y, 0]));
 
     // Coloured back panel
     addMesh(root, new THREE.BoxGeometry(0.84, 1.56, 0.02), accentMat, [0, 0.8, -0.15]);
@@ -603,7 +591,7 @@ export function fitModel(
 
   const maxDim = Math.max(size.x, size.y, size.z, 0.6);
   const fovRad = (camera.fov * Math.PI) / 180;
-  const baseDistance = ((maxDim / 2) / Math.tan(fovRad / 2)) * 1.55;
+  const baseDistance = (maxDim / 2 / Math.tan(fovRad / 2)) * 1.55;
   const distance = baseDistance / zoom;
 
   updateCameraPosition(camera, target, angle, elevation, distance);
