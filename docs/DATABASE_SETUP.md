@@ -46,6 +46,7 @@ npm run db:migrate
 ```
 
 **Expected output:**
+
 ```
 10 tables
 addresses 11 columns 1 indexes 1 fks
@@ -56,6 +57,7 @@ categories 8 columns 1 indexes 0 fks
 ```
 
 If you get an error, check:
+
 - MySQL is running
 - The database `app_db` exists
 - Your `.env` DATABASE_URL is correct
@@ -69,6 +71,7 @@ npm run db:seed
 ```
 
 **Expected output (first run):**
+
 ```
 🌱 Starting seed...
 
@@ -121,19 +124,19 @@ SELECT COUNT(*) FROM product_variants;
 -- Expected: 43
 
 -- Products per category
-SELECT c.name, COUNT(p.id) as product_count 
-FROM categories c 
-LEFT JOIN products p ON p.category_id = c.id 
-GROUP BY c.name 
+SELECT c.name, COUNT(p.id) as product_count
+FROM categories c
+LEFT JOIN products p ON p.category_id = c.id
+GROUP BY c.name
 ORDER BY c.name;
 -- Expected: All categories with at least 1 product
 -- Tile Accessories should have 3 products
 
 -- Products with variant counts
 SELECT p.name, COUNT(v.id) as variant_count
-FROM products p 
-LEFT JOIN product_variants v ON v.product_id = p.id 
-GROUP BY p.name 
+FROM products p
+LEFT JOIN product_variants v ON v.product_id = p.id
+GROUP BY p.name
 ORDER BY p.name;
 -- Expected: All 19 products listed with their variant counts
 
@@ -145,10 +148,11 @@ EXIT;
 Run the verification script:
 
 ```powershell
-node verify-database.mjs
+npm run db:verify
 ```
 
 This script tests:
+
 1. MySQL connection
 2. Database exists
 3. Tables are created
@@ -233,19 +237,24 @@ All three should pass with no errors.
 ## Troubleshooting
 
 ### "Access denied for user 'root'"
+
 - Check your password in `.env`
 - Ensure MySQL is running
 
 ### "Unknown database 'app_db'"
+
 - Run the CREATE DATABASE command from Step 1
 
 ### "No tables found"
+
 - Run `npm run db:migrate`
 
 ### "No products found"
+
 - Run `npm run db:seed`
 
 ### Images not loading
+
 - The seed now uses Unsplash placeholder images
 - They require internet connection
 
@@ -284,7 +293,7 @@ git status .env
 ✅ `/shop` lists products  
 ✅ Product pages load  
 ✅ Cart persists items  
-✅ Build passes  
+✅ Build passes
 
 ---
 

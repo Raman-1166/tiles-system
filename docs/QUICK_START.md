@@ -17,14 +17,15 @@ npm run db:seed
 npm run db:seed
 
 # 4. Verify automatically
-node verify-database.mjs
+npm run db:verify
 
 # 5. Start dev server
 npm run dev
 ```
 
 Then test in browser:
+
 - http://localhost:3000/api/health
 - http://localhost:3000/shop
 
-Full instructions: See `DATABASE_SETUP.md`
+Full instructions: See `docs/DATABASE_SETUP.md`

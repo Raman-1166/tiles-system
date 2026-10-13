@@ -5,6 +5,7 @@ An interactive 3D e-commerce experience for ceramic tiles and architectural furn
 ---
 
 ## Features
+
 - **Interactive 3D Hero Tile Wall:** Real-time ceramic tile grid with cursor ripple wave physics, touch flip rotation, and GPU-calculated studio reflections.
 - **3D Room Visualizer:** Preview tiles on floors and walls across Living Room, Kitchen, and Bathroom environments with customizable layout patterns (straight, brick, herringbone) and grout colors.
 - **Dual Catalog & Filtering:** Browse ceramic tiles and architectural furniture with price range, category, material, finish, and in-stock filters.
@@ -15,6 +16,7 @@ An interactive 3D e-commerce experience for ceramic tiles and architectural furn
 ---
 
 ## Prerequisites
+
 - **Node.js:** `>= 20.0.0`
 - **npm:** `>= 10.0.0`
 - **MySQL:** `8.x` running locally or accessible via network
@@ -22,6 +24,7 @@ An interactive 3D e-commerce experience for ceramic tiles and architectural furn
 ---
 
 ## Environment Setup
+
 Create a `.env` file in the project root (see `.env.example`):
 
 ```env
@@ -37,42 +40,54 @@ ADMIN_SESSION_SECRET=your_32_character_random_secret_string
 Run the following commands in order:
 
 ### 1. Create the MySQL Database
+
 Connect to your local MySQL server:
+
 ```powershell
 mysql -uroot -p
 ```
+
 Create the database with utf8mb4 encoding:
+
 ```sql
 CREATE DATABASE IF NOT EXISTS app_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 EXIT;
 ```
 
 ### 2. Install Dependencies & Run Migrations
+
 ```powershell
 npm install
 npm run db:migrate
 ```
 
 ### 3. Seed Database
+
 Populate categories, products, and SKU variants (run twice to confirm idempotent seeding):
+
 ```powershell
 npm run db:seed
 npm run db:seed
 ```
 
 ### 4. Verify Database Setup
+
 Run the automated 5-step verification test suite:
+
 ```powershell
-node verify-database.mjs
+npm run db:verify
 ```
+
 Expected output: `5/5 steps passed`
 
 ### 5. Start the Development Server
+
 ```powershell
 npm run dev
 ```
 
 Visit the application at:
+
 - **Homepage:** [http://localhost:3000](http://localhost:3000)
 - **Shop Catalog:** [http://localhost:3000/shop](http://localhost:3000/shop)
 - **Room Visualizer:** [http://localhost:3000/visualizer](http://localhost:3000/visualizer)
@@ -85,22 +100,24 @@ Visit the application at:
 
 ## Available Scripts
 
-| Command | Description |
-|---|---|
-| `npm run dev` | Starts Next.js development server with Turbopack |
-| `npm run build` | Builds production bundle |
-| `npm run start` | Starts Next.js production server |
-| `npm run lint` | Runs ESLint validation |
-| `npm run typecheck` | Runs TypeScript type checking (`tsc --noEmit`) |
-| `npm run db:migrate` | Applies Drizzle database migrations |
-| `npm run db:seed` | Seeds database with categories, products, and variants |
-| `npm run db:generate` | Generates new SQL migration files with Drizzle Kit |
-| `npm run db:studio` | Opens Drizzle Studio database browser |
+| Command               | Description                                            |
+| --------------------- | ------------------------------------------------------ |
+| `npm run dev`         | Starts Next.js development server with Turbopack       |
+| `npm run build`       | Builds production bundle                               |
+| `npm run start`       | Starts Next.js production server                       |
+| `npm run lint`        | Runs ESLint validation                                 |
+| `npm run typecheck`   | Runs TypeScript type checking (`tsc --noEmit`)         |
+| `npm run db:migrate`  | Applies Drizzle database migrations                    |
+| `npm run db:seed`     | Seeds database with categories, products, and variants |
+| `npm run db:generate` | Generates new SQL migration files with Drizzle Kit     |
+| `npm run db:studio`   | Opens Drizzle Studio database browser                  |
 
 ---
 
 ## Documentation
+
 Comprehensive technical documentation is available in the [`docs/`](./docs) folder:
+
 - [`docs/PROJECT_OVERVIEW.md`](./docs/PROJECT_OVERVIEW.md): Problem statement, tech stack, and user personas
 - [`docs/REQUIREMENTS.md`](./docs/REQUIREMENTS.md): Core functional requirements and partially implemented features
 - [`docs/DATABASE_DESIGN.md`](./docs/DATABASE_DESIGN.md): Table schemas, columns, constraints, and Mermaid ER diagram
