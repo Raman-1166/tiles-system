@@ -47,3 +47,6 @@ tsconfig.tsbuildinfo
 *.swp
 *.swo
 *~
+
+# Database backups
+backups/
