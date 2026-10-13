@@ -42,7 +42,9 @@ export const products = mysqlTable(
   "products",
   {
     id: int("id").primaryKey().autoincrement(),
-    categoryId: int("category_id").references(() => categories.id, { onDelete: "set null" }),
+    categoryId: int("category_id")
+      .notNull()
+      .references(() => categories.id, { onDelete: "restrict" }),
     slug: varchar("slug", { length: 255 }).notNull().unique(),
     name: varchar("name", { length: 500 }).notNull(),
     tagline: text("tagline").notNull(),
@@ -58,8 +60,11 @@ export const products = mysqlTable(
     images: json("images").$type<string[]>().notNull(),
     specs: json("specs").$type<Record<string, string>>().notNull(),
     // Tile PBR texture set (relative public/ paths) - only used for tiles
-    textureSet: json("texture_set")
-      .$type<{ albedo: string; normal: string; roughness: string } | null>(),
+    textureSet: json("texture_set").$type<{
+      albedo: string;
+      normal: string;
+      roughness: string;
+    } | null>(),
     tileSizeCm: int("tile_size_cm"),
     // Visualizer-specific fields for procedural tile generation
     visualizerColor: varchar("visualizer_color", { length: 20 }), // hex color for procedural texture
@@ -68,23 +73,23 @@ export const products = mysqlTable(
     pricePerM2: int("price_per_m2"), // price per square meter in cents
     textureImage: text("texture_image"), // optional: URL to use as texture instead of procedural
     // Shop tile card display fields
-    gloss: boolean("gloss").notNull().default(false),            // true = Gloss finish tag
-    groutColor: varchar("grout_color", { length: 20 }),          // hex grout colour for shot()
-    tileLayout: varchar("tile_layout", { length: 20 }),          // "straight" | "herringbone"
-    tilesAcross: int("tiles_across"),                            // tiles shown across card image
-    tileType: varchar("tile_type", { length: 30 }),              // "Gloss" | "Matte" | "Natural" | "Mosaic"
-    colourFamily: varchar("colour_family", { length: 30 }),      // "White" | "Beige" | "Grey" | "Charcoal" | "Blue" | "Green" | "Terracotta" | "Wood"
-    sizeLabel: varchar("size_label", { length: 30 }),            // e.g. "20×20"
+    gloss: boolean("gloss").notNull().default(false), // true = Gloss finish tag
+    groutColor: varchar("grout_color", { length: 20 }), // hex grout colour for shot()
+    tileLayout: varchar("tile_layout", { length: 20 }), // "straight" | "herringbone"
+    tilesAcross: int("tiles_across"), // tiles shown across card image
+    tileType: varchar("tile_type", { length: 30 }), // "Gloss" | "Matte" | "Natural" | "Mosaic"
+    colourFamily: varchar("colour_family", { length: 30 }), // "White" | "Beige" | "Grey" | "Charcoal" | "Blue" | "Green" | "Terracotta" | "Wood"
+    sizeLabel: varchar("size_label", { length: 30 }), // e.g. "20×20"
     showFromPrice: boolean("show_from_price").notNull().default(false), // show "from" prefix
     // 3D models
     modelUrl: text("model_url"), // GLB model for furniture or detailed tile preview
     arModelUrl: text("ar_model_url"), // iOS Quick Look compatible USDZ
     // Furniture dimensions in centimeters
-    dimensions: json("dimensions")
-      .$type<{ width: number; height: number; depth: number } | null>(),
+    dimensions: json("dimensions").$type<{ width: number; height: number; depth: number } | null>(),
     // Old variants field - kept for backwards compatibility, will migrate to product_variants
     variants: json("variants")
-      .$type<{ name: string; colorHex: string; targetMesh: string }[]>().notNull(),
+      .$type<{ name: string; colorHex: string; targetMesh: string }[]>()
+      .notNull(),
     featured: boolean("featured").notNull().default(false),
     isActive: boolean("is_active").notNull().default(true),
     createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -219,12 +224,20 @@ export const orders = mysqlTable(
     orderNumber: varchar("order_number", { length: 100 }).notNull().unique(),
     customerId: int("customer_id").references(() => customers.id, { onDelete: "set null" }),
     email: varchar("email", { length: 255 }).notNull(),
-    status: varchar("status", { length: 50 }).notNull().default("pending"), // pending, paid, packed, shipped, delivered, cancelled, refunded
+    status: varchar("status", { length: 50 }).notNull().default("pending"), // legacy status (retained for backward compat until 2.5)
+    paymentStatus: varchar("payment_status", { length: 50 }).notNull().default("pending"), // pending, paid, failed, refunded, partially_refunded
+    fulfillmentStatus: varchar("fulfillment_status", { length: 50 })
+      .notNull()
+      .default("unfulfilled"), // unfulfilled, packed, shipped, delivered, cancelled, on_hold
     subtotalCents: int("subtotal_cents").notNull(),
     shippingCents: int("shipping_cents").notNull().default(0),
+    shippingMethod: varchar("shipping_method", { length: 50 }).notNull().default("standard"),
     taxCents: int("tax_cents").notNull().default(0),
+    discountCents: int("discount_cents").notNull().default(0),
     totalCents: int("total_cents").notNull(),
     currency: varchar("currency", { length: 10 }).notNull().default("USD"),
+    phone: varchar("phone", { length: 50 }),
+    trackingNumber: varchar("tracking_number", { length: 100 }),
     shippingAddress: json("shipping_address")
       .$type<{
         name: string;
@@ -237,6 +250,9 @@ export const orders = mysqlTable(
       }>()
       .notNull(),
     stripeSessionId: varchar("stripe_session_id", { length: 500 }),
+    idempotencyKey: varchar("idempotency_key", { length: 255 }).unique(),
+    cartSessionId: varchar("cart_session_id", { length: 255 }),
+    paidAt: timestamp("paid_at"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
   },
@@ -245,6 +261,8 @@ export const orders = mysqlTable(
     emailIdx: index("orders_email_idx").on(table.email),
     customerIdx: index("orders_customer_idx").on(table.customerId),
     statusIdx: index("orders_status_idx").on(table.status),
+    paymentStatusIdx: index("orders_payment_status_idx").on(table.paymentStatus),
+    fulfillmentStatusIdx: index("orders_fulfillment_status_idx").on(table.fulfillmentStatus),
   })
 );
 
@@ -267,6 +285,7 @@ export const orderItems = mysqlTable(
     sku: varchar("sku", { length: 100 }).notNull(),
     unitPriceCents: int("unit_price_cents").notNull(),
     quantity: int("quantity").notNull(),
+    meta: json("meta").$type<Record<string, unknown> | null>(),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (table) => ({
@@ -287,8 +306,8 @@ export const payments = mysqlTable(
     orderId: int("order_id")
       .notNull()
       .references(() => orders.id, { onDelete: "cascade" }),
-    provider: varchar("provider", { length: 100 }).notNull().default("stripe"), // stripe, paypal, etc
-    providerPaymentId: varchar("provider_payment_id", { length: 500 }).notNull(),
+    provider: varchar("provider", { length: 100 }).notNull().default("stripe"), // stripe, mock
+    providerPaymentId: varchar("provider_payment_id", { length: 255 }).notNull().unique(),
     amountCents: int("amount_cents").notNull(),
     status: varchar("status", { length: 50 }).notNull().default("pending"), // pending, succeeded, failed, refunded
     metadata: json("metadata").$type<Record<string, unknown>>(),
@@ -304,21 +323,73 @@ export type Payment = typeof payments.$inferSelect;
 export type NewPayment = typeof payments.$inferInsert;
 
 // -----------------------------------------------------------------------
+// Order Events (Lifecycle & Audit Trail)
+// -----------------------------------------------------------------------
+export const orderEvents = mysqlTable(
+  "order_events",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    orderId: int("order_id")
+      .notNull()
+      .references(() => orders.id, { onDelete: "cascade" }),
+    type: varchar("type", { length: 50 }).notNull(), // order_placed, payment_received, stock_allocated, status_changed, order_expired
+    fromStatus: varchar("from_status", { length: 50 }),
+    toStatus: varchar("to_status", { length: 50 }),
+    actor: varchar("actor", { length: 100 }).notNull().default("system"),
+    meta: json("meta").$type<Record<string, unknown> | null>(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    orderIdx: index("order_events_order_idx").on(table.orderId),
+  })
+);
+
+export type OrderEvent = typeof orderEvents.$inferSelect;
+export type NewOrderEvent = typeof orderEvents.$inferInsert;
+
+// -----------------------------------------------------------------------
+// Webhook Events (Idempotency store for payment webhooks)
+// -----------------------------------------------------------------------
+export const webhookEvents = mysqlTable(
+  "webhook_events",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    provider: varchar("provider", { length: 50 }).notNull(),
+    eventId: varchar("event_id", { length: 255 }).notNull().unique(),
+    type: varchar("type", { length: 100 }).notNull(),
+    processedAt: timestamp("processed_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    providerIdx: index("webhook_events_provider_idx").on(table.provider),
+  })
+);
+
+export type WebhookEvent = typeof webhookEvents.$inferSelect;
+export type NewWebhookEvent = typeof webhookEvents.$inferInsert;
+
+// -----------------------------------------------------------------------
 // Cart: a lightweight, cookie-session based cart. No auth required.
 // -----------------------------------------------------------------------
-export const cartItems = mysqlTable("cart_items", {
-  id: int("id").primaryKey().autoincrement(),
-  sessionId: varchar("session_id", { length: 255 }).notNull(),
-  productId: int("product_id")
-    .notNull()
-    .references(() => products.id, { onDelete: "cascade" }),
-  variantId: int("variant_id").references(() => productVariants.id, { onDelete: "cascade" }),
-  quantity: int("quantity").notNull().default(1),
-  variant: varchar("variant", { length: 255 }), // legacy field
-  // Extra context e.g. room visualizer selections (layout, grout colour, area).
-  meta: json("meta").$type<Record<string, unknown> | null>(),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+export const cartItems = mysqlTable(
+  "cart_items",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    sessionId: varchar("session_id", { length: 255 }).notNull(),
+    productId: int("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    variantId: int("variant_id").references(() => productVariants.id, { onDelete: "cascade" }),
+    quantity: int("quantity").notNull().default(1),
+    variant: varchar("variant", { length: 255 }), // legacy field
+    // Extra context e.g. room visualizer selections (layout, grout colour, area).
+    meta: json("meta").$type<Record<string, unknown> | null>(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow().onUpdateNow(),
+  },
+  (table) => ({
+    sessionIdx: index("cart_items_session_idx").on(table.sessionId),
+  })
+);
 
 export type CartItem = typeof cartItems.$inferSelect;
 export type NewCartItem = typeof cartItems.$inferInsert;

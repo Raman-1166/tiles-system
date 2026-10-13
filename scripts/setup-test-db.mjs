@@ -35,7 +35,11 @@ async function setupTestDb() {
   const testConn = await mysql.createConnection(testDbUrl);
 
   const migrationsDir = path.resolve(__dirname, "../drizzle");
-  const migrationFiles = ["0000_fearless_abomination.sql", "0001_nosy_taskmaster.sql"];
+  const migrationFiles = [
+    "0000_fearless_abomination.sql",
+    "0001_nosy_taskmaster.sql",
+    "0002_industry_readiness_phase1.sql",
+  ];
 
   for (const file of migrationFiles) {
     const filePath = path.join(migrationsDir, file);

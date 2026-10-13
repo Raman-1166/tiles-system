@@ -15,6 +15,13 @@
       "when": 1791165561598,
       "tag": "0001_nosy_taskmaster",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1791823900000,
+      "tag": "0002_industry_readiness_phase1",
+      "breakpoints": true
     }
   ]
 }
